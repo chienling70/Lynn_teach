@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成語填空：冰雪巨龍的試煉</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+
+        body {
+            font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            color: #006064;
+        }
+
+        /* 左側：測驗區 */
+        .quiz-section {
+            flex: 2;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        /* 右側：寶盒區 */
+        .inventory-section {
+            flex: 1;
+            background-color: #00838f;
+            border-left: 5px solid #00acc1;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-y: auto;
+            color: white;
+            box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            color: #006064;
+            text-shadow: 2px 2px 0px #fff;
+            font-size: 32px;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.8);
+            padding: 10px 30px;
+            border-radius: 50px;
+            border: 3px solid #0097a7;
+        }
+
+        .card {
+            background: white;
+            width: 90%;
+            max-width: 700px;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 96, 100, 0.2);
+            text-align: center;
+            border: 4px solid #4dd0e1;
+            position: relative;
+        }
+
+        .question-label {
+            font-size: 18px;
+            color: #0097a7;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .question-text {
+            font-size: 26px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            min-height: 80px;
+        }
+
+        .blank-space {
+            color: #00bcd4;
+            border-bottom: 3px solid #00bcd4;
+            padding: 0 10px;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .option-btn {
+            background: white;
+            border: 2px solid #00bcd4;
+            color: #00838f;
+            font-size: 22px;
+            padding: 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #0097a7;
+        }
+
+        .option-btn:hover { background-color: #e0f7fa; transform: translateY(-2px); }
+        .option-btn:active { transform: translateY(2px); box-shadow: none; }
+
+        /* 寶可夢格子 */
+        .inventory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .item-slot {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed #80deea;
+            position: relative;
+            transition: 0.3s;
+        }
+        
+        .item-slot.collected {
+            background: white;
+            border: 3px solid #fdd835;
+            box-shadow: 0 0 10px rgba(253, 216, 53, 0.5);
+            animation: popIn 0.5s ease-out;
+        }
+
+        .poke-img { width: 85%; height: 85%; object-fit: contain; image-rendering: pixelated; }
+        
+        .slot-number {
+            position: absolute;
+            top: 2px;
+            left: 5px;
+            font-size: 10px;
+            color: rgba(255,255,255,0.5);
+        }
+
+        @keyframes popIn {
+            0% { transform: scale(0); opacity: 0; }
+            80% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+
+        /* 錯誤回饋視窗 (Modal) */
+        .feedback-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 20px;
+            z-index: 10;
+            padding: 30px;
+            color: white;
+            text-align: center;
+        }
+
+        .feedback-title { font-size: 36px; color: #ff5252; margin-bottom: 20px; font-weight: bold; }
+        .feedback-ans { font-size: 24px; margin-bottom: 15px; color: #ffd700; }
+        .feedback-full { font-size: 18px; line-height: 1.6; margin-bottom: 30px; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 10px; }
+        
+        .next-btn {
+            background: #00acc1; color: white; border: none;
+            padding: 10px 30px; font-size: 20px; border-radius: 50px;
+            font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #00838f;
+        }
+        .next-btn:active { transform: translateY(4px); box-shadow: none; }
+
+        /* 結果畫面 */
+        .result-screen {
+            display: none;
+            text-align: center;
+            width: 100%;
+        }
+
+        /* 傳說寶可夢 */
+        .legendary-container {
+            display: none;
+            margin-top: 20px;
+            animation: float 3s infinite ease-in-out;
+        }
+        .legendary-img { 
+            width: 250px; 
+            height: 250px; 
+            filter: drop-shadow(0 0 20px #4dd0e1); 
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .review-area {
+            display: none;
+            margin: 20px auto;
+            text-align: left;
+            width: 90%;
+            max-width: 600px;
+            max-height: 250px;
+            overflow-y: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #00838f;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .review-item { border-bottom: 1px dashed #ccc; padding: 10px 0; color: #333; }
+        .review-wrong { color: #e74c3c; text-decoration: line-through; margin-right: 10px; }
+        .review-correct { color: #27ae60; font-weight: bold; }
+
+        .btn-restart {
+            margin-top: 20px;
+            background: #fdd835; color: #333; border: none;
+            padding: 15px 40px; font-size: 22px; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 4px 0 #fbc02d; border: 2px solid #fff; font-weight: bold;
+        }
+
+        /* RWD */
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; }
+            .quiz-section { flex: none; min-height: 60vh; padding: 20px; }
+            .inventory-section { flex: none; width: 100%; min-height: 40vh; border-left: none; border-top: 5px solid #00bcd4; }
+            .inventory-grid { grid-template-columns: repeat(5, 1fr); }
+            .options-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="quiz-section">
+        <h1>❄️ 冰雪巨龍的試煉</h1>
+        
+        <div class="card" id="quiz-card">
+            <div class="question-label">請填入正確的成語：</div>
+            <div class="question-number">第 <span id="q-num">1</span> / 20 題</div>
+            <div id="question-text" class="question-text">題目載入中...</div>
+            
+            <div class="options-grid" id="options-area">
+                </div>
+
+            <div class="feedback-overlay" id="feedback-overlay">
+                <div class="feedback-title">❄️ 結凍了！</div>
+                <div class="feedback-ans" id="fb-ans">正確答案是：</div>
+                <div class="feedback-full" id="fb-full">完整句子</div>
+                <button class="next-btn" onclick="nextQuestion()">我知道了，下一題</button>
+            </div>
+        </div>
+
+        <div class="result-screen" id="result-screen">
+            <h1 id="result-title">試煉結束！</h1>
+            <div style="font-size: 24px; margin-bottom: 20px; color: #006064;">
+                收集數量：<span id="final-score" style="color:#e91e63; font-weight:bold; font-size:40px;">0</span> / 20
+            </div>
+
+            <div id="legendary-reward" class="legendary-container">
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/699.png" class="legendary-img">
+                <h2 style="color: #0097a7; text-shadow: 1px 1px 0px #fff;">恭喜！召喚出「冰雪巨龍」！<br>你是成語大師！</h2>
+            </div>
+
+            <button id="review-btn" class="btn-restart" style="background-color: #607d8b; color:white; box-shadow: 0 4px 0 #455a64; display:none; margin-right: 10px;" onclick="toggleReview()">檢視錯題</button>
+            <button class="btn-restart" onclick="location.reload()">再挑戰一次</button>
+            
+            <div id="review-area" class="review-area"></div>
+        </div>
+    </div>
+
+    <div class="inventory-section">
+        <h2 style="color: #e0f7fa; margin: 0; text-shadow: 1px 1px 0 #006064;">🧊 寶可夢冰庫</h2>
+        <div class="inventory-grid" id="inventory-grid">
+            </div>
+    </div>
+
+<script>
+    // 成語資料庫 (20個)
+    // 句子皆為設計好的填空題
+    const rawData = [
+        { idiom: "一貧如洗", sentence: "他家雖然______，但他從不怨天尤人，依然努力向學。" },
+        { idiom: "賢妻良母", sentence: "林太太相夫教子，把家裡打理得井井有條，真是標準的______。" },
+        { idiom: "神機妙算", sentence: "諸葛亮______，草船借箭的故事至今仍為人津津樂道。" },
+        { idiom: "夜以繼日", sentence: "為了趕在期限前完成專案，工程師們______地工作。" },
+        { idiom: "刻苦耐勞", sentence: "爺爺年輕時______，白手起家創立了這份家業。" },
+        { idiom: "漸入佳境", sentence: "剛開始學習鋼琴時覺得很難，但練習久了，倒也______，越彈越有心得。" },
+        { idiom: "齒頰留香", sentence: "這道紅燒獅子頭燉得入味，吃完後令人______，回味無窮。" },
+        { idiom: "陽奉陰違", sentence: "對於上司的命令，他表面答應，私底下卻______，完全不照做。" },
+        { idiom: "哀鴻遍野", sentence: "戰亂之後，災區______，景象十分淒慘。" },
+        { idiom: "臥薪嘗膽", sentence: "越王勾踐______，忍辱負重，終於復國成功。" },
+        { idiom: "痛定思痛", sentence: "經歷這次失敗，我們必須______，檢討原因，以免重蹈覆轍。" },
+        { idiom: "江郎才盡", sentence: "這位作家近幾年的作品了無新意，讓人有______之感。" },
+        { idiom: "哄堂大笑", sentence: "小明在臺上講了一個幽默的笑話，逗得全班______。" },
+        { idiom: "眾望所歸", sentence: "李里長熱心公益，這次連任成功，可說是______。" },
+        { idiom: "阮囊羞澀", sentence: "我很想買那雙球鞋，可惜______，只能等發薪水再說。" },
+        { idiom: "差強人意", sentence: "雖然這次考試成績沒有達到滿分，但也算______，比上次進步了。" },
+        { idiom: "初出茅廬", sentence: "他雖然______，缺乏經驗，但學習態度非常積極。" },
+        { idiom: "庸人自擾", sentence: "這件事根本沒那麼嚴重，你何必______，整天擔心受怕呢？" },
+        { idiom: "蛛絲馬跡", sentence: "警方在現場仔細搜尋，希望能找到破案的______。" },
+        { idiom: "千里鵝毛", sentence: "這份禮物雖然不貴重，但是______，代表我的一番心意。" }
+    ];
+
+    let quizList = [];
+    let currentQ = 0;
+    let score = 0;
+    let wrongAnswers = [];
+
+    window.onload = function() {
+        initGrid();
+        startQuiz();
+    };
+
+    function initGrid() {
+        const grid = document.getElementById('inventory-grid');
+        grid.innerHTML = "";
+        for(let i=0; i<20; i++) {
+            let slot = document.createElement('div');
+            slot.className = 'item-slot';
+            slot.id = 'slot-' + i;
+            slot.innerHTML = `<div class="slot-number">${i+1}</div>`;
+            grid.appendChild(slot);
+        }
+    }
+
+    function startQuiz() {
+        // 洗牌題目並生成選項
+        quizList = rawData.map(item => {
+            // 正確答案
+            let correct = item.idiom;
+            // 隨機選3個錯誤答案
+            let distractors = rawData
+                .filter(x => x.idiom !== correct)
+                .map(x => x.idiom)
+                .sort(() => 0.5 - Math.random())
+                .slice(0, 3);
+            
+            let options = [correct, ...distractors].sort(() => 0.5 - Math.random());
+
+            return {
+                sentence: item.sentence.replace("______", "<span class='blank-space'>______</span>"),
+                rawSentence: item.sentence,
+                ans: correct,
+                options: options
+            };
+        }).sort(() => 0.5 - Math.random()); // 題目順序再次打亂
+        
+        currentQ = 0;
+        score = 0;
+        wrongAnswers = [];
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        if(currentQ >= quizList.length) {
+            endGame();
+            return;
+        }
+
+        const qData = quizList[currentQ];
+        document.getElementById('q-num').innerText = (currentQ + 1);
+        document.getElementById('question-text').innerHTML = qData.sentence;
+        
+        const optsArea = document.getElementById('options-area');
+        optsArea.innerHTML = "";
+
+        qData.options.forEach(opt => {
+            let btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt);
+            optsArea.appendChild(btn);
+        });
+
+        document.getElementById('feedback-overlay').style.display = 'none';
+    }
+
+    function checkAnswer(userChoice) {
+        const qData = quizList[currentQ];
+        
+        if (userChoice === qData.ans) {
+            // 答對
+            score++;
+            updateInventory(currentQ, true);
+            // 稍微延遲自動下一題
+            setTimeout(nextQuestion, 400);
+        } else {
+            // 答錯 -> 顯示回饋視窗
+            updateInventory(currentQ, false);
+            showFeedback(qData);
+            
+            wrongAnswers.push({
+                sentence: qData.rawSentence,
+                user: userChoice,
+                ans: qData.ans
+            });
+        }
+    }
+
+    function updateInventory(index, isCorrect) {
+        const slot = document.getElementById('slot-' + index);
+        
+        if (isCorrect) {
+            // 隨機產生一隻寶可夢 ID (1-800)
+            let pokeId = Math.floor(Math.random() * 800) + 1;
+            slot.className = "item-slot collected";
+            slot.innerHTML = `
+                <div class="slot-number">${index+1}</div>
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokeId}.png" class="poke-img">
+            `;
+        } else {
+            slot.style.borderColor = "#e74c3c";
+            slot.style.backgroundColor = "rgba(231, 76, 60, 0.2)";
+            slot.innerHTML = `<div class="slot-number">${index+1}</div><span style="font-size:24px;">❌</span>`;
+        }
+    }
+
+    function showFeedback(qData) {
+        const overlay = document.getElementById('feedback-overlay');
+        const fbAns = document.getElementById('fb-ans');
+        const fbFull = document.getElementById('fb-full');
+        
+        fbAns.innerHTML = `正確答案是：<span style="color:#fdd835; font-size:28px;">${qData.ans}</span>`;
+        // 顯示完整句子
+        fbFull.innerText = qData.rawSentence.replace("______", qData.ans);
+        
+        overlay.style.display = 'flex';
+    }
+
+    function nextQuestion() {
+        currentQ++;
+        loadQuestion();
+    }
+
+    function endGame() {
+        document.getElementById('quiz-card').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+        document.getElementById('final-score').innerText = score;
+
+        if (score === 20) {
+            document.getElementById('legendary-reward').style.display = 'block';
+            launchConfetti();
+        } else {
+            document.getElementById('result-title').innerText = "試煉結束！再接再厲！";
+            if(wrongAnswers.length > 0) {
+                document.getElementById('review-btn').style.display = 'inline-block';
+                renderWrongAnswers();
+            }
+        }
+    }
+
+    function renderWrongAnswers() {
+        const area = document.getElementById('review-area');
+        area.innerHTML = "<h3 style='color:#e74c3c; margin-top:0;'>❌ 錯題檢討</h3>";
+        wrongAnswers.forEach((item, index) => {
+            let div = document.createElement('div');
+            div.className = 'review-item';
+            div.innerHTML = `
+                <div style="font-size:16px; margin-bottom:5px; line-height:1.4;">
+                    ${item.sentence.replace("______", "<span style='text-decoration:underline;'>______</span>")}
+                </div>
+                <div style="font-size:14px; color:#555;">
+                    你的選擇：<span class="review-wrong">${item.user}</span>
+                    正確答案：<span class="review-correct">${item.ans}</span>
+                </div>
+            `;
+            area.appendChild(div);
+        });
+    }
+
+    function toggleReview() {
+        const area = document.getElementById('review-area');
+        if(area.style.display === 'block') {
+            area.style.display = 'none';
+        } else {
+            area.style.display = 'block';
+        }
+    }
+
+    function launchConfetti() {
+        var duration = 3 * 1000;
+        var animationEnd = Date.now() + duration;
+        var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+        function random(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        var interval = setInterval(function() {
+            var timeLeft = animationEnd - Date.now();
+            if (timeLeft <= 0) return clearInterval(interval);
+            var particleCount = 50 * (timeLeft / duration);
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.1, 0.3), y: Math.random() - 0.2 } }));
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.7, 0.9), y: Math.random() - 0.2 } }));
+        }, 250);
+    }
+</script>
+
+</body>
+</html>
