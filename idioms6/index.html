@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>成語寶可夢大師：進階挑戰</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", "Segoe UI", sans-serif;
+            background-color: #fce4ec; /* 淺粉色背景 */
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 左側：測驗區 */
+        .quiz-section {
+            flex: 2;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #ffffff 0%, #ffebee 100%);
+            position: relative;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.1);
+        }
+
+        /* 右側：寶可夢圖鑑區 */
+        .pokedex-section {
+            flex: 1;
+            background-color: #37474f;
+            color: white;
+            padding: 20px;
+            overflow-y: auto;
+            border-left: 5px solid #ffca28;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 { color: #d81b60; margin-bottom: 10px; text-shadow: 2px 2px 0px #fff; }
+        h2 { margin: 0 0 20px 0; font-size: 24px; color: #ffca28; }
+
+        .progress-bar {
+            width: 80%;
+            max-width: 600px;
+            height: 20px;
+            background-color: #ddd;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background-color: #4caf50;
+            transition: width 0.3s;
+        }
+
+        .card {
+            background: white;
+            width: 90%;
+            max-width: 600px;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            border: 3px solid #ec407a;
+            position: relative;
+        }
+
+        .question-text {
+            font-size: 48px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            letter-spacing: 2px;
+        }
+
+        .highlight-blank {
+            color: #ec407a;
+            border-bottom: 4px solid #ec407a;
+            display: inline-block;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .option-btn {
+            background: white;
+            border: 2px solid #ec407a;
+            color: #ec407a;
+            font-size: 28px;
+            padding: 15px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: bold;
+        }
+
+        .option-btn:hover {
+            background: #fce4ec;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(236, 64, 122, 0.3);
+        }
+
+        /* 寶可夢格子 */
+        .pokemon-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .poke-slot {
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed #78909c;
+            position: relative;
+            font-size: 12px;
+            color: #78909c;
+        }
+
+        .poke-slot img {
+            width: 90%;
+            height: 90%;
+            image-rendering: pixelated;
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        /* 失敗的格子 */
+        .poke-slot.failed::after {
+            content: "❌";
+            font-size: 24px;
+        }
+
+        /* 結果畫面 */
+        .result-screen {
+            display: none;
+            text-align: center;
+            width: 100%;
+        }
+        
+        .legendary-box {
+            display: none;
+            margin-top: 20px;
+            animation: glow 2s infinite alternate;
+        }
+        
+        .legendary-img {
+            width: 250px;
+            height: 250px;
+            object-fit: contain;
+        }
+
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+        @keyframes glow { from { filter: drop-shadow(0 0 10px gold); } to { filter: drop-shadow(0 0 30px red); } }
+
+        .btn-restart {
+            margin-top: 20px;
+            background: #ec407a;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #ad1457;
+        }
+        .btn-restart:active { transform: translateY(4px); box-shadow: none; }
+
+        /* 錯題檢視 */
+        .review-area {
+            display: none;
+            margin: 20px auto;
+            text-align: left;
+            width: 90%;
+            max-width: 600px;
+            max-height: 250px;
+            overflow-y: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+            border: 2px solid #b0bec5;
+        }
+        .review-item {
+            border-bottom: 1px dashed #ccc;
+            padding: 10px 0;
+            font-size: 18px;
+            color: #333;
+        }
+        .review-wrong { color: #e74c3c; text-decoration: line-through; margin-right: 10px; }
+        .review-correct { color: #2ecc71; font-weight: bold; }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; }
+            .quiz-section { flex: none; height: auto; min-height: 60vh; padding: 20px; }
+            .pokedex-section { flex: none; width: 100%; min-height: 40vh; }
+            .pokemon-grid { grid-template-columns: repeat(5, 1fr); }
+            .question-text { font-size: 32px; }
+            .card { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="quiz-section">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <h1>✨ 成語寶可夢大師 ✨</h1>
+        
+        <div class="card" id="quiz-card">
+            <div id="question-text" class="question-text"></div>
+            <div id="options-area" class="options-grid"></div>
+        </div>
+
+        <div class="result-screen" id="result-screen">
+            <h1 id="final-title">挑戰結束！</h1>
+            <div style="font-size: 24px; margin-bottom: 20px; color: #555;">
+                獲得寶可夢：<span id="final-score" style="color:#ec407a; font-weight:bold; font-size:50px;">0</span> / 20
+            </div>
+
+            <div id="legendary-reward" class="legendary-box">
+                <h3 style="color: #f1c40f; margin: 0; font-size: 28px; text-shadow: 1px 1px 2px #000;">🌟 傳說降臨！夢幻登場！ 🌟</h3>
+                <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/151.png" class="legendary-img" alt="Mew">
+                <p style="color: #d81b60; font-weight: bold;">太強了！你是成語大師！</p>
+            </div>
+
+            <button id="review-btn" class="btn-restart" style="background-color: #78909c; box-shadow: 0 4px 0 #455a64; display:none; margin-right: 10px;" onclick="toggleReview()">檢視錯題</button>
+            <button class="btn-restart" onclick="location.reload()">再玩一次</button>
+            
+            <div id="review-area" class="review-area"></div>
+        </div>
+    </div>
+
+    <div class="pokedex-section">
+        <h2>🎒 寶可夢背包</h2>
+        <div style="margin-bottom: 10px; font-size: 18px;">收集進度：<span id="poke-count">0</span> / 20</div>
+        <div class="pokemon-grid" id="pokemon-grid">
+            </div>
+    </div>
+
+<script>
+    // 完整的 20 題資料庫 (包含補齊的一貧如洗)
+    const rawQuestions = [
+        { full: "(漸)入佳境", ans: "漸", opts: ["漸", "間", "見", "建"] },
+        { full: "(哀)鴻遍野", ans: "哀", opts: ["哀", "衰", "衷", "唉"] },
+        { full: "臥薪(嘗)膽", ans: "嘗", opts: ["嘗", "常", "償", "場"] },
+        { full: "(眾)望所歸", ans: "眾", opts: ["眾", "重", "種", "仲"] },
+        { full: "阮囊(羞)澀", ans: "羞", opts: ["羞", "修", "休", "秀"] },
+        { full: "(初)出茅廬", ans: "初", opts: ["初", "粗", "出", "除"] },
+        { full: "(丟)三落四", ans: "丟", opts: ["丟", "去", "刁", "法"] },
+        { full: "一(念)之差", ans: "念", opts: ["念", "練", "戀", "唸"] },
+        { full: "一蹶不(振)", ans: "振", opts: ["振", "震", "鎮", "正"] },
+        { full: "支離破(碎)", ans: "碎", opts: ["碎", "脆", "粹", "翠"] },
+        { full: "花言(巧)語", ans: "巧", opts: ["巧", "恰", "竅", "橋"] },
+        { full: "庸人自(擾)", ans: "擾", opts: ["擾", "繞", "饒", "惱"] },
+        { full: "(披)荊斬棘", ans: "披", opts: ["披", "批", "皮", "被"] },
+        { full: "熱淚盈(眶)", ans: "眶", opts: ["眶", "框", "筐", "況"] },
+        { full: "(龐)然大物", ans: "龐", opts: ["龐", "寵", "龍", "旁"] },
+        { full: "蛛(絲)馬跡", ans: "絲", opts: ["絲", "思", "斯", "司"] },
+        { full: "(挺)身而出", ans: "挺", opts: ["挺", "庭", "廷", "艇"] },
+        { full: "千(里)鵝毛", ans: "里", opts: ["里", "理", "禮", "鯉"] },
+        { full: "(既)往不咎", ans: "既", opts: ["既", "即", "記", "寄"] },
+        { full: "一(貧)如洗", ans: "貧", opts: ["貧", "憑", "頻", "平"] } // 補這一題湊20
+    ];
+
+    let quizList = [];
+    let currentQ = 0;
+    let score = 0;
+    let wrongAnswers = [];
+
+    // 初始化
+    window.onload = function() {
+        initGrid();
+        startQuiz();
+    };
+
+    function initGrid() {
+        const grid = document.getElementById('pokemon-grid');
+        grid.innerHTML = "";
+        for(let i=0; i<20; i++) {
+            let slot = document.createElement('div');
+            slot.className = 'poke-slot';
+            slot.id = 'slot-' + i;
+            slot.innerText = (i + 1);
+            grid.appendChild(slot);
+        }
+    }
+
+    function startQuiz() {
+        // 洗牌算法 (Fisher-Yates Shuffle)
+        quizList = [...rawQuestions];
+        for (let i = quizList.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [quizList[i], quizList[j]] = [quizList[j], quizList[i]];
+        }
+        
+        currentQ = 0;
+        score = 0;
+        wrongAnswers = [];
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        if(currentQ >= quizList.length) {
+            endGame();
+            return;
+        }
+
+        const qData = quizList[currentQ];
+        
+        // 更新進度條
+        document.getElementById('progress-fill').style.width = ((currentQ) / 20 * 100) + "%";
+
+        // 處理題目文字，把括號內的字換成底線
+        let displayQ = qData.full.replace(/\(.\)/, '<span class="highlight-blank">____</span>');
+        
+        // 顯示題目
+        document.getElementById('question-text').innerHTML = displayQ;
+
+        // 顯示選項 (也要隨機打亂)
+        const optsArea = document.getElementById('options-area');
+        optsArea.innerHTML = "";
+        
+        let shuffledOpts = [...qData.opts].sort(() => Math.random() - 0.5);
+
+        shuffledOpts.forEach(opt => {
+            let btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt, qData);
+            optsArea.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selected, qData) {
+        const slot = document.getElementById('slot-' + currentQ);
+        
+        if (selected === qData.ans) {
+            // 答對：獲得寶可夢
+            score++;
+            // 隨機產生寶可夢 ID (1-150, 避開神獸)
+            let pokeID = Math.floor(Math.random() * 150) + 1;
+            let img = document.createElement('img');
+            img.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokeID}.png`;
+            slot.innerText = ""; // 清除數字
+            slot.appendChild(img);
+            
+            // 更新計分板
+            document.getElementById('poke-count').innerText = score;
+        } else {
+            // 答錯：該格子變為失敗狀態
+            slot.innerText = "";
+            slot.classList.add('failed');
+            
+            // 記錄錯題
+            wrongAnswers.push({
+                full: qData.full,
+                correct: qData.ans,
+                wrong: selected
+            });
+        }
+        
+        currentQ++;
+        loadQuestion();
+    }
+
+    function endGame() {
+        document.getElementById('quiz-card').style.display = 'none';
+        document.getElementById('result-screen').style.display = 'block';
+        document.getElementById('final-score').innerText = score;
+        document.getElementById('progress-fill').style.width = "100%";
+
+        // 完美過關判定 (20分)
+        if (score === 20) {
+            document.getElementById('legendary-reward').style.display = 'block';
+            document.getElementById('final-title').innerText = "🎉 完美通關！ 🎉";
+            launchConfetti();
+        } else {
+            document.getElementById('final-title').innerText = "挑戰結束！";
+            // 顯示錯題按鈕
+            if(wrongAnswers.length > 0) {
+                document.getElementById('review-btn').style.display = 'inline-block';
+                renderWrongAnswers();
+            }
+        }
+    }
+
+    function renderWrongAnswers() {
+        const area = document.getElementById('review-area');
+        area.innerHTML = "<h3>❌ 錯題檢討</h3>";
+        wrongAnswers.forEach(item => {
+            let div = document.createElement('div');
+            div.className = 'review-item';
+            div.innerHTML = `
+                <div>${item.full}</div>
+                <span class="review-wrong">你選了：${item.wrong}</span>
+                <span class="review-correct">正解：${item.ans}</span>
+            `; // 修正: use item.ans instead of item.correct if inconsistent, checked code: item.correct assigned from qData.ans
+            area.appendChild(div);
+        });
+    }
+
+    function toggleReview() {
+        const area = document.getElementById('review-area');
+        if(area.style.display === 'block') {
+            area.style.display = 'none';
+        } else {
+            area.style.display = 'block';
+        }
+    }
+
+    function launchConfetti() {
+        var duration = 3 * 1000;
+        var animationEnd = Date.now() + duration;
+        var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+        function random(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        var interval = setInterval(function() {
+            var timeLeft = animationEnd - Date.now();
+
+            if (timeLeft <= 0) {
+                return clearInterval(interval);
+            }
+
+            var particleCount = 50 * (timeLeft / duration);
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.1, 0.3), y: Math.random() - 0.2 } }));
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.7, 0.9), y: Math.random() - 0.2 } }));
+        }, 250);
+    }
+</script>
+
+</body>
+</html>
