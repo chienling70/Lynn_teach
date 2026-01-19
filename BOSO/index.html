@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>拖曳特訓：皮卡丘進化大冒險</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap');
+
+        body {
+            font-family: "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+            background: linear-gradient(135deg, #ffc107 0%, #ffeb3b 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            color: #333;
+            user-select: none; /* 禁止選取文字，避免拖曳干擾 */
+        }
+
+        /* 左側：寶可夢展示區 */
+        .poke-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, rgba(255,215,0,0) 70%);
+            border-right: 5px solid #fff;
+            position: relative;
+        }
+
+        .poke-container {
+            width: 300px;
+            height: 300px;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .poke-img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.8));
+            transition: transform 0.3s;
+            image-rendering: pixelated;
+        }
+        
+        .poke-name {
+            font-size: 32px;
+            font-weight: bold;
+            margin-top: 10px;
+            color: #3e2723;
+            text-shadow: 2px 2px 0 #fff;
+        }
+
+        .exp-bar-container {
+            width: 70%;
+            height: 20px;
+            background: #fff;
+            border-radius: 12px;
+            margin-top: 15px;
+            border: 3px solid #3e2723;
+            overflow: hidden;
+        }
+        
+        .exp-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #2980b9, #3498db);
+            transition: width 0.5s ease-out;
+        }
+
+        /* 進化與受傷特效 */
+        .evolving { animation: evolveFlash 2s infinite; }
+        @keyframes evolveFlash {
+            0% { filter: brightness(1) drop-shadow(0 0 10px white); transform: scale(1); }
+            50% { filter: brightness(100) drop-shadow(0 0 50px yellow); transform: scale(1.1); }
+            100% { filter: brightness(1) drop-shadow(0 0 10px white); transform: scale(1); }
+        }
+        .hurt { animation: hurtShake 0.5s; filter: grayscale(1); }
+        @keyframes hurtShake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+
+        /* 右側：遊戲區 */
+        .game-section {
+            flex: 1;
+            background: #fff9c4;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            padding: 20px;
+        }
+
+        /* 放置區 (生字) */
+        .drop-zone {
+            width: 200px;
+            height: 200px;
+            background: white;
+            border: 5px dashed #f39c12;
+            border-radius: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 50px;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .target-char {
+            font-size: 100px;
+            font-weight: bold;
+            color: #2c3e50;
+            z-index: 1;
+        }
+
+        /* 拖曳時的視覺回饋 */
+        .drop-zone.drag-over {
+            background-color: #fffde7;
+            border-color: #2ecc71;
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(46, 204, 113, 0.5);
+        }
+
+        .drop-zone.correct {
+            border-color: #2ecc71;
+            background-color: #dcedc8;
+            animation: popSuccess 0.5s;
+        }
+
+        .drop-zone.wrong {
+            border-color: #e74c3c;
+            background-color: #ffcdd2;
+            animation: shake 0.5s;
+        }
+
+        /* 拖曳選項區 */
+        .draggables-container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            min-height: 100px;
+        }
+
+        .draggable-item {
+            width: 80px;
+            height: 80px;
+            background: #fff;
+            border: 3px solid #f39c12;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 36px;
+            font-weight: bold;
+            color: #d35400;
+            cursor: grab;
+            box-shadow: 0 5px 0 #d35400;
+            transition: transform 0.1s;
+            touch-action: none; /* 重要：防止手機滾動，專注於拖曳 */
+        }
+
+        .draggable-item:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+        }
+
+        .draggable-item.dragging {
+            opacity: 0.5;
+        }
+
+        @keyframes popSuccess {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+
+        /* 指引文字 */
+        .instruction {
+            font-size: 20px;
+            color: #7f8c8d;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        /* 結束畫面 */
+        #end-screen {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            background: rgba(255,255,255,0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .review-area {
+            width: 80%;
+            max-height: 200px;
+            overflow-y: auto;
+            border: 2px solid #ccc;
+            margin-top: 20px;
+            padding: 10px;
+            background: white;
+            text-align: left;
+        }
+        
+        .btn-restart {
+            padding: 15px 40px; font-size: 22px;
+            background: #f1c40f; border:none; border-radius: 50px;
+            font-weight: bold; cursor: pointer; box-shadow: 0 4px 0 #d4ac0d;
+            margin-top: 20px;
+        }
+
+        /* 錯誤回饋遮罩 */
+        .modal {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            flex-direction: column; justify-content: center; align-items: center;
+            z-index: 20; color: white;
+        }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; }
+            .poke-section { height: 35vh; border-right: none; border-bottom: 5px solid #fff; }
+            .game-section { height: 65vh; }
+            .poke-container { width: 150px; height: 150px; }
+            .drop-zone { width: 150px; height: 150px; margin-bottom: 30px; }
+            .target-char { font-size: 80px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="poke-section">
+        <div class="poke-container">
+            <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/172.png" id="poke-img" class="poke-img">
+        </div>
+        <div class="poke-name" id="poke-name">皮丘</div>
+        <div class="exp-bar-container">
+            <div class="exp-fill" id="exp-bar"></div>
+        </div>
+        <div style="margin-top:5px; font-size:14px; opacity:0.8;">進化能量</div>
+    </div>
+
+    <div class="game-section">
+        <div class="instruction">第 <span id="q-num">1</span>/15 題：把部首拖進去！</div>
+
+        <div class="drop-zone" id="drop-zone">
+            <div class="target-char" id="target-char">?</div>
+        </div>
+
+        <div class="draggables-container" id="draggables-container">
+            </div>
+
+        <div id="end-screen">
+            <h1 style="color:#d35400;">特訓結束！</h1>
+            <h2 id="final-form-name" style="color:#f39c12;"></h2>
+            <div id="review-area" class="review-area"></div>
+            <button class="btn-restart" onclick="location.reload()">再玩一次</button>
+        </div>
+    </div>
+
+    <div class="modal" id="feedback-modal">
+        <h2 style="font-size: 40px;">🚫 答錯囉！</h2>
+        <p style="font-size: 24px;">正確部首是：<span id="fb-ans" style="color:#f1c40f; font-weight:bold; font-size:40px;"></span></p>
+        <button class="btn-restart" style="background:#3498db; box-shadow:0 4px 0 #2980b9; color:white;" onclick="nextQuestion()">下一題</button>
+    </div>
+
+<script>
+    // --- 資料設定 ---
+    const evolutionStages = [
+        { minScore: 0, name: "皮丘", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/172.png" }, 
+        { minScore: 5, name: "皮卡丘", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/25.png" },
+        { minScore: 10, name: "雷丘", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/26.png" },
+        { minScore: 15, name: "阿羅拉雷丘", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10100.png" }
+    ];
+
+    const rawData = [
+        { char: "慶", radical: "心" }, { char: "懷", radical: "心" }, { char: "祥", radical: "示" },
+        { char: "儀", radical: "人" }, { char: "序", radical: "广" }, { char: "毫", radical: "毛" },
+        { char: "挨", radical: "手" }, { char: "吉", radical: "口" }, { char: "潮", radical: "水" },
+        { char: "炸", radical: "火" }, { char: "旺", radical: "日" }, { char: "爆", radical: "火" },
+        { char: "梭", radical: "木" }, { char: "徵", radical: "彳" }, { char: "揚", radical: "手" }
+    ];
+
+    const allRadicals = [...new Set(rawData.map(item => item.radical))];
+
+    let quizList = [];
+    let currentQ = 0;
+    let score = 0;
+    let wrongAnswers = [];
+    let currentStageIndex = 0;
+
+    // --- 初始化 ---
+    window.onload = function() {
+        startQuiz();
+    };
+
+    function startQuiz() {
+        // 產生題目
+        quizList = rawData.map(item => {
+            let correct = item.radical;
+            let distractors = allRadicals.filter(r => r !== correct).sort(() => 0.5 - Math.random()).slice(0, 3);
+            let options = [correct, ...distractors].sort(() => 0.5 - Math.random());
+            return { question: item.char, ans: correct, options: options };
+        }).sort(() => 0.5 - Math.random());
+
+        currentQ = 0;
+        score = 0;
+        wrongAnswers = [];
+        updateEvolutionUI();
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        if(currentQ >= quizList.length) {
+            endGame();
+            return;
+        }
+
+        const qData = quizList[currentQ];
+        document.getElementById('q-num').innerText = (currentQ + 1);
+        document.getElementById('target-char').innerText = qData.question;
+        
+        // 產生拖曳選項
+        const container = document.getElementById('draggables-container');
+        container.innerHTML = "";
+        
+        qData.options.forEach(opt => {
+            let el = document.createElement('div');
+            el.className = 'draggable-item';
+            el.innerText = opt;
+            el.draggable = true; // 啟用電腦版拖曳
+            
+            // 電腦版事件
+            el.addEventListener('dragstart', handleDragStart);
+            el.addEventListener('dragend', handleDragEnd);
+            
+            // 手機觸控事件
+            el.addEventListener('touchstart', handleTouchStart, {passive: false});
+            el.addEventListener('touchmove', handleTouchMove, {passive: false});
+            el.addEventListener('touchend', handleTouchEnd);
+            
+            container.appendChild(el);
+        });
+
+        // 重置放置區樣式
+        const dropZone = document.getElementById('drop-zone');
+        dropZone.className = 'drop-zone';
+        document.getElementById('feedback-modal').style.display = 'none';
+    }
+
+    // --- 拖曳邏輯 (電腦版) ---
+    function handleDragStart(e) {
+        e.dataTransfer.setData('text/plain', e.target.innerText);
+        e.target.classList.add('dragging');
+    }
+    function handleDragEnd(e) {
+        e.target.classList.remove('dragging');
+    }
+
+    // 放置區事件
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault(); // 允許放置
+        dropZone.classList.add('drag-over');
+    });
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const data = e.dataTransfer.getData('text/plain');
+        checkAnswer(data);
+    });
+
+    // --- 拖曳邏輯 (手機觸控版) ---
+    let touchItem = null;
+    let touchStartX, touchStartY;
+    let initialLeft, initialTop;
+
+    function handleTouchStart(e) {
+        e.preventDefault();
+        touchItem = e.target;
+        touchItem.classList.add('dragging');
+        const touch = e.touches[0];
+        
+        // 記錄初始位置，以便拖曳時移動
+        const rect = touchItem.getBoundingClientRect();
+        touchItem.style.position = 'fixed';
+        touchItem.style.left = rect.left + 'px';
+        touchItem.style.top = rect.top + 'px';
+        touchItem.style.zIndex = 1000;
+    }
+
+    function handleTouchMove(e) {
+        if (!touchItem) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        // 讓方塊跟著手指移動 (中心點對齊)
+        touchItem.style.left = (touch.clientX - 40) + 'px';
+        touchItem.style.top = (touch.clientY - 40) + 'px';
+        
+        // 檢查是否碰到放置區
+        const dropRect = dropZone.getBoundingClientRect();
+        if (touch.clientX >= dropRect.left && touch.clientX <= dropRect.right &&
+            touch.clientY >= dropRect.top && touch.clientY <= dropRect.bottom) {
+            dropZone.classList.add('drag-over');
+        } else {
+            dropZone.classList.remove('drag-over');
+        }
+    }
+
+    function handleTouchEnd(e) {
+        if (!touchItem) return;
+        const touch = e.changedTouches[0];
+        touchItem.classList.remove('dragging');
+        
+        // 檢查放置
+        const dropRect = dropZone.getBoundingClientRect();
+        if (touch.clientX >= dropRect.left && touch.clientX <= dropRect.right &&
+            touch.clientY >= dropRect.top && touch.clientY <= dropRect.bottom) {
+            checkAnswer(touchItem.innerText);
+        } else {
+            // 沒放進去，歸位 (這裡簡單重繪介面即可)
+            touchItem.style.position = 'static';
+            touchItem.style.zIndex = 'auto';
+        }
+        
+        touchItem = null;
+        dropZone.classList.remove('drag-over');
+    }
+
+    // --- 判斷答案 ---
+    function checkAnswer(selectedRadical) {
+        const qData = quizList[currentQ];
+        
+        if (selectedRadical === qData.ans) {
+            // 答對
+            score++;
+            dropZone.classList.add('correct');
+            
+            // 寶可夢動畫
+            const pokeImg = document.getElementById('poke-img');
+            pokeImg.style.transform = "scale(1.2)";
+            setTimeout(() => pokeImg.style.transform = "scale(1)", 200);
+
+            checkEvolution();
+            setTimeout(nextQuestion, 500);
+        } else {
+            // 答錯
+            dropZone.classList.add('wrong');
+            wrongAnswers.push({ char: qData.question, user: selectedRadical, ans: qData.ans });
+            
+            // 受傷動畫
+            const pokeImg = document.getElementById('poke-img');
+            pokeImg.classList.add('hurt');
+            setTimeout(() => pokeImg.classList.remove('hurt'), 500);
+
+            // 顯示正確答案
+            document.getElementById('fb-ans').innerText = qData.ans;
+            document.getElementById('feedback-modal').style.display = 'flex';
+        }
+        
+        // 復原拖曳元件位置 (如果是觸控)
+        const items = document.querySelectorAll('.draggable-item');
+        items.forEach(item => {
+            item.style.position = 'static';
+        });
+    }
+
+    function checkEvolution() {
+        let nextStage = 0;
+        for (let i = evolutionStages.length - 1; i >= 0; i--) {
+            if (score >= evolutionStages[i].minScore) {
+                nextStage = i;
+                break;
+            }
+        }
+        if (nextStage > currentStageIndex) {
+            triggerEvolution(nextStage);
+        } else {
+            updateEvolutionUI();
+        }
+    }
+
+    function triggerEvolution(newIndex) {
+        const pokeImg = document.getElementById('poke-img');
+        pokeImg.classList.add('evolving');
+        setTimeout(() => {
+            currentStageIndex = newIndex;
+            updateEvolutionUI();
+            pokeImg.classList.remove('evolving');
+            if (newIndex === 3) launchConfetti();
+        }, 1500);
+    }
+
+    function updateEvolutionUI() {
+        const stage = evolutionStages[currentStageIndex];
+        document.getElementById('poke-img').src = stage.img;
+        document.getElementById('poke-name').innerText = stage.name;
+        
+        const pct = (score / 15) * 100;
+        document.getElementById('exp-bar').style.width = pct + "%";
+    }
+
+    function nextQuestion() {
+        currentQ++;
+        loadQuestion();
+    }
+
+    function endGame() {
+        document.getElementById('end-screen').style.display = 'flex';
+        document.getElementById('final-form-name').innerText = evolutionStages[currentStageIndex].name;
+        
+        const area = document.getElementById('review-area');
+        area.innerHTML = "";
+        if (wrongAnswers.length > 0) {
+            wrongAnswers.forEach(item => {
+                area.innerHTML += `<div style="border-bottom:1px dashed #ccc; padding:5px;">
+                    生字：<strong>${item.char}</strong> <br>
+                    你選：<span style="color:red">${item.user}</span> 正解：<span style="color:green; font-weight:bold;">${item.ans}</span>
+                </div>`;
+            });
+        } else {
+            area.innerHTML = "<div style='color:green; font-weight:bold;'>太棒了！全部答對！</div>";
+        }
+
+        if(score === 15) launchConfetti();
+    }
+
+    function launchConfetti() {
+        var duration = 3 * 1000;
+        var animationEnd = Date.now() + duration;
+        var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+        function random(min, max) { return Math.random() * (max - min) + min; }
+        var interval = setInterval(function() {
+            var timeLeft = animationEnd - Date.now();
+            if (timeLeft <= 0) return clearInterval(interval);
+            var particleCount = 50 * (timeLeft / duration);
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.1, 0.3), y: Math.random() - 0.2 } }));
+            confetti(Object.assign({}, defaults, { particleCount, origin: { x: random(0.7, 0.9), y: Math.random() - 0.2 } }));
+        }, 250);
+    }
+</script>
+
+</body>
+</html>
