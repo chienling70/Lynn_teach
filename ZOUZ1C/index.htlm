@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>妙蛙種子進化：語詞填空特訓</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+
+        body {
+            font-family: "Noto Sans TC", sans-serif;
+            background-color: #1b5e20; /* 深綠色背景 */
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- 左側：寶可夢展示區 (佔 40%) --- */
+        .left-panel {
+            width: 40%;
+            height: 100%;
+            background: linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-right: 5px solid #81c784;
+            position: relative;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+            z-index: 2;
+        }
+
+        .poke-img-container {
+            width: 90%;
+            height: 60%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .poke-img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 0 20px rgba(144, 238, 144, 0.6));
+            transition: transform 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        .poke-info {
+            text-align: center;
+            color: #fff;
+            margin-top: 20px;
+        }
+
+        .poke-name {
+            font-size: 40px;
+            font-weight: 900;
+            color: #c8e6c9;
+            text-shadow: 2px 2px 0 #1b5e20;
+            margin: 0;
+        }
+
+        .level-indicator {
+            font-size: 20px;
+            color: #e8f5e9;
+            margin-top: 10px;
+            background: rgba(0,0,0,0.3);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 1px solid #a5d6a7;
+        }
+
+        /* --- 右側：遊戲區 (佔 60%) --- */
+        .right-panel {
+            width: 60%;
+            height: 100%;
+            background-color: #f1f8e9; /* 淺草綠 */
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* 頂部標題列 */
+        .game-header {
+            padding: 20px;
+            background: #43a047;
+            color: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .current-char {
+            font-size: 32px;
+            font-weight: bold;
+        }
+
+        .instruction {
+            font-size: 16px;
+            opacity: 0.9;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 10px;
+            border-radius: 10px;
+        }
+
+        /* 遊戲捲動區 */
+        .game-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 題目容器 (句子框) */
+        .targets-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .sentence-box {
+            background: #fff;
+            border: 2px solid #a5d6a7;
+            border-radius: 15px;
+            padding: 15px;
+            font-size: 20px;
+            color: #33691e;
+            line-height: 1.8;
+            position: relative;
+            box-shadow: 0 2px 0 #81c784;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* 挖空區域 (Drop Zone) */
+        .drop-zone {
+            display: inline-block;
+            min-width: 100px;
+            height: 36px;
+            background: #e8f5e9;
+            border-bottom: 3px solid #43a047;
+            margin: 0 5px;
+            vertical-align: middle;
+            border-radius: 5px;
+            text-align: center;
+            transition: all 0.3s;
+            padding: 0 10px;
+        }
+
+        /* 答對樣式 */
+        .drop-zone.correct {
+            border: none;
+            background-color: #43a047;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 0 10px #4caf50;
+            line-height: 36px;
+            animation: popIn 0.3s;
+        }
+
+        /* 答錯樣式 (瞬間) */
+        .drop-zone.wrong-flash {
+            animation: shake 0.5s;
+            background-color: #ffcdd2;
+            border-color: #d32f2f;
+        }
+
+        /* 選項區 (語詞) */
+        .options-area {
+            background: rgba(76, 175, 80, 0.1);
+            border: 2px dashed #43a047;
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            min-height: 100px;
+        }
+
+        .draggable-item {
+            background: #fff;
+            color: #2e7d32;
+            border: 2px solid #2e7d32;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: grab;
+            box-shadow: 0 4px 0 #1b5e20;
+            transition: transform 0.1s;
+            touch-action: none;
+            z-index: 100;
+        }
+
+        .draggable-item:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+            background: #c8e6c9;
+        }
+
+        /* 按鈕 */
+        .next-btn {
+            margin: 0 auto;
+            padding: 15px 60px;
+            font-size: 24px;
+            background: #ffeb3b; /* 鮮黃色按鈕 */
+            color: #333;
+            border: 4px solid #fff;
+            border-radius: 50px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #fbc02d;
+            display: none;
+            animation: pulseBtn 1.5s infinite;
+        }
+
+        /* 錯誤提示 Modal */
+        .error-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .error-content {
+            background: white;
+            width: 80%;
+            max-width: 500px;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            border-top: 10px solid #d32f2f;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .error-title { color: #d32f2f; font-size: 32px; margin-bottom: 20px; font-weight: bold; }
+        .error-msg { font-size: 20px; color: #333; line-height: 1.6; margin-bottom: 30px; text-align: left; background:#fafafa; padding:15px; border-radius:10px; border-left: 5px solid #d32f2f;}
+        .error-btn {
+            background: #d32f2f; color: white; border: none; padding: 15px 40px;
+            font-size: 22px; border-radius: 50px; cursor: pointer; font-weight:bold;
+            box-shadow: 0 4px 0 #b71c1c;
+        }
+
+        /* 結束畫面 */
+        .end-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            flex-direction: column; justify-content: center; align-items: center;
+            z-index: 3000; color: white;
+        }
+
+        /* 動畫 */
+        @keyframes popIn { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+        @keyframes evolveFlash { 
+            0% { filter: brightness(1) drop-shadow(0 0 10px #66bb6a); } 
+            50% { filter: brightness(100) drop-shadow(0 0 50px white); } 
+            100% { filter: brightness(1) drop-shadow(0 0 10px #66bb6a); } 
+        }
+        @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        /* RWD 調整 */
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; }
+            .left-panel { width: 100%; height: 35vh; border-right: none; border-bottom: 5px solid #81c784; }
+            .right-panel { width: 100%; height: 65vh; }
+            .poke-name { font-size: 28px; }
+            .game-header { padding: 10px; }
+            .current-char { font-size: 24px; }
+            .sentence-box { font-size: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="left-panel">
+        <div class="poke-img-container">
+            <img src="" id="poke-img" class="poke-img">
+        </div>
+        <div class="poke-info">
+            <h1 class="poke-name" id="poke-name">妙蛙種子</h1>
+            <div class="level-indicator" id="stage-indicator">第 1 / 8 關</div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="game-header">
+            <div class="current-char" id="level-header">第一關：慶</div>
+            <div class="instruction">將語詞拖入正確的空格中 (答錯需重來)</div>
+        </div>
+
+        <div class="game-content">
+            <div class="targets-grid" id="targets-grid">
+                </div>
+
+            <div class="options-area" id="options-area">
+                </div>
+
+            <button class="next-btn" id="next-btn" onclick="nextLevel()">進化！下一關</button>
+        </div>
+    </div>
+
+    <div class="error-modal" id="error-modal">
+        <div class="error-content">
+            <div class="error-title">🍃 哎呀，答錯了！</div>
+            <div class="error-msg" id="error-msg-text"></div>
+            <button class="error-btn" onclick="resetLevel()">重新特訓</button>
+        </div>
+    </div>
+
+    <div class="end-screen" id="end-screen">
+        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/10033.png" style="width:320px; filter: drop-shadow(0 0 20px #66bb6a);">
+        <h1 style="color:#a5d6a7; font-size:40px; margin-top:20px;">特訓完全制霸！</h1>
+        <h2>超級妙蛙花 覺醒！</h2>
+        <button class="next-btn" style="display:block; background:#fff; color:#1b5e20; margin-top:30px;" onclick="location.reload()">重新開始</button>
+    </div>
+
+<script>
+    // --- 遊戲資料庫 (8關) ---
+    const levels = [
+        {
+            char: "慶",
+            pairs: [
+                { word: "慶賀", sentence: "大家一起_____奶奶的八十歲大壽。" },
+                { word: "喜慶", sentence: "過年時，家裡貼滿了紅色的春聯，看起來很_____。" },
+                { word: "慶典", sentence: "國慶日時，總統府前會舉辦盛大的_____。" },
+                { word: "慶幸", sentence: "還好我有帶傘，_____沒被這場大雨淋濕。" }
+            ]
+        },
+        {
+            char: "懷",
+            pairs: [
+                { word: "懷念", sentence: "我很_____以前幼兒園的老師和同學。" },
+                { word: "懷抱", sentence: "剛出生的弟弟躺在媽媽_____裡，看起來很幸福。" },
+                { word: "懷疑", sentence: "大家都很誠實，我不該_____這件事是誰做的。" },
+                { word: "關懷", sentence: "老師常常教導我們要_____獨居的老人。" },
+                { word: "釋懷", sentence: "經過媽媽的開導，他終於對輸掉比賽這件事_____了。" }
+            ]
+        },
+        {
+            char: "祥",
+            pairs: [
+                { word: "吉祥", sentence: "橘子代表_____如意，過年大家都要吃。" },
+                { word: "祥和", sentence: "鄉下的生活氣氛_____，讓人感到很放鬆。" },
+                { word: "慈祥", sentence: "鄰居的老奶奶很_____，常常請我們吃糖果。" },
+                { word: "祥瑞", sentence: "古代人認為看到鳳凰是_____的象徵。" },
+                { word: "不祥", sentence: "烏雲密布又狂風大作，有一種_____的預感。" }
+            ]
+        },
+        {
+            char: "儀",
+            pairs: [
+                { word: "儀式", sentence: "每週的升旗_____，全校同學都要參加。" },
+                { word: "禮儀", sentence: "吃飯時不敲碗筷，是基本的餐桌_____。" },
+                { word: "儀器", sentence: "自然課時，我們用科學_____觀察昆蟲。" },
+                { word: "司儀", sentence: "_____站在臺上，宣布運動會正式開始。" },
+                { word: "儀態", sentence: "姊姊的_____優雅，坐姿總是很端正。" }
+            ]
+        },
+        {
+            char: "序",
+            pairs: [
+                { word: "順序", sentence: "請大家依照排隊的_____上車，不要推擠。" },
+                { word: "秩序", sentence: "圖書館裡要保持_____，不能大聲喧嘩。" },
+                { word: "程序", sentence: "借書的時候，要先完成刷條碼的_____。" },
+                { word: "序幕", sentence: "精彩的魔術表演即將拉開_____。" },
+                { word: "自序", sentence: "作者在這本書的_____中，寫下了創作的心情。" }
+            ]
+        },
+        {
+            char: "毫",
+            pairs: [
+                { word: "絲毫", sentence: "他準備得很充分，對明天的考試_____不感到緊張。" },
+                { word: "揮毫", sentence: "書法比賽時，許多高手現場_____寫大字。" },
+                { word: "分毫", sentence: "這兩位選手跑得一樣快，時間差距只有_____。" },
+                { word: "毫無", sentence: "我對這道困難的數學題_____頭緒。" }
+            ]
+        },
+        {
+            char: "挨",
+            pairs: [
+                { word: "挨打", sentence: "因為我不聽話又亂跑，差點_____。" },
+                { word: "挨罵", sentence: "弟弟打破了花瓶，很怕回家會_____。" },
+                { word: "挨餓", sentence: "那隻流浪狗在路邊_____受凍，看起來好可憐。" }
+            ]
+        },
+        {
+            char: "吉",
+            pairs: [
+                { word: "吉利", sentence: "過年要說_____話，大家才會開心。" },
+                { word: "吉祥", sentence: "這幅畫畫了_____的圖案，很適合掛在客廳。" },
+                { word: "吉時", sentence: "既然_____已到，婚禮就趕快開始吧！" },
+                { word: "吉日", sentence: "今天是黃道_____，許多人都選在今天結婚。" }
+            ]
+        }
+    ];
+
+    // --- 妙蛙種子進化設定 ---
+    const stages = [
+        // Bulbasaur ID 1
+        { name: "妙蛙種子", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/1.png" },
+        // Ivysaur ID 2
+        { name: "妙蛙草", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/2.png" },
+        // Venusaur ID 3
+        { name: "妙蛙花", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/3.png" }
+    ];
+
+    let currentLevelIdx = 0;
+    let matchesFound = 0;
+
+    // --- 初始化 ---
+    window.onload = function() {
+        loadLevel();
+    };
+
+    function loadLevel() {
+        const levelData = levels[currentLevelIdx];
+        
+        // 更新標題
+        const chineseNums = ["一", "二", "三", "四", "五", "六", "七", "八"];
+        document.getElementById('level-header').innerText = `第${chineseNums[currentLevelIdx]}關：${levelData.char}`;
+        document.getElementById('stage-indicator').innerText = `第 ${currentLevelIdx + 1} / 8 關`;
+        document.getElementById('next-btn').style.display = 'none';
+        matchesFound = 0;
+
+        // 更新左側寶可夢
+        updatePokemon();
+
+        // 建立題目區 (Sentences)
+        const targetsGrid = document.getElementById('targets-grid');
+        targetsGrid.innerHTML = '';
+        
+        levelData.pairs.forEach(pair => {
+            let sentenceBox = document.createElement('div');
+            sentenceBox.className = 'sentence-box';
+            
+            // 將句子中的 _____ 替換為放置區 div
+            const parts = pair.sentence.split('_____');
+            
+            let part1 = document.createElement('span');
+            part1.innerText = parts[0];
+            sentenceBox.appendChild(part1);
+
+            let dropZone = document.createElement('div');
+            dropZone.className = 'drop-zone';
+            dropZone.dataset.answer = pair.word; // 答案
+            // 註冊放置事件
+            dropZone.addEventListener('dragover', handleDragOver);
+            dropZone.addEventListener('drop', handleDrop);
+            sentenceBox.appendChild(dropZone);
+
+            let part2 = document.createElement('span');
+            part2.innerText = parts[1];
+            sentenceBox.appendChild(part2);
+            
+            targetsGrid.appendChild(sentenceBox);
+        });
+
+        // 建立選項區 (Draggables)
+        const optionsArea = document.getElementById('options-area');
+        optionsArea.innerHTML = '';
+        
+        let shuffledPairs = [...levelData.pairs].sort(() => 0.5 - Math.random());
+        
+        shuffledPairs.forEach(pair => {
+            let item = document.createElement('div');
+            item.className = 'draggable-item';
+            item.draggable = true;
+            item.innerText = pair.word;
+            
+            item.addEventListener('dragstart', handleDragStart);
+            item.addEventListener('touchstart', handleTouchStart, {passive: false});
+            item.addEventListener('touchmove', handleTouchMove, {passive: false});
+            item.addEventListener('touchend', handleTouchEnd);
+
+            optionsArea.appendChild(item);
+        });
+    }
+
+    function updatePokemon() {
+        const img = document.getElementById('poke-img');
+        const nameEl = document.getElementById('poke-name');
+        let stage = 0;
+        
+        // 0-1關: 妙蛙種子 (2關)
+        // 2-4關: 妙蛙草 (3關)
+        // 5-7關: 妙蛙花 (3關)
+        if (currentLevelIdx >= 2 && currentLevelIdx < 5) stage = 1;
+        if (currentLevelIdx >= 5) stage = 2;
+
+        if (img.src !== stages[stage].img) {
+            img.classList.add('evolving');
+            setTimeout(() => {
+                img.src = stages[stage].img;
+                nameEl.innerText = stages[stage].name;
+                img.classList.remove('evolving');
+            }, 500);
+        } else {
+            img.src = stages[stage].img;
+            nameEl.innerText = stages[stage].name;
+        }
+    }
+
+    // --- 拖曳邏輯 ---
+    let draggedItem = null;
+
+    function handleDragStart(e) {
+        draggedItem = e.target;
+        e.dataTransfer.setData('text/plain', e.target.innerText);
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault(); 
+        if (!e.currentTarget.classList.contains('correct')) {
+            e.currentTarget.style.backgroundColor = '#c8e6c9';
+        }
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        const box = e.currentTarget;
+        if (!box.classList.contains('correct')) {
+            box.style.backgroundColor = '#e8f5e9';
+        }
+        const word = e.dataTransfer.getData('text/plain');
+        checkAnswer(box, word, draggedItem);
+    }
+
+    // --- 觸控邏輯 ---
+    let touchItem = null;
+
+    function handleTouchStart(e) {
+        e.preventDefault();
+        touchItem = e.target;
+        touchItem.style.position = 'fixed';
+        touchItem.style.opacity = '0.8';
+        touchItem.style.zIndex = '1000';
+        const touch = e.touches[0];
+        touchItem.style.left = (touch.clientX - touchItem.offsetWidth / 2) + 'px';
+        touchItem.style.top = (touch.clientY - touchItem.offsetHeight / 2) + 'px';
+    }
+
+    function handleTouchMove(e) {
+        if (!touchItem) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        touchItem.style.left = (touch.clientX - touchItem.offsetWidth / 2) + 'px';
+        touchItem.style.top = (touch.clientY - touchItem.offsetHeight / 2) + 'px';
+    }
+
+    function handleTouchEnd(e) {
+        if (!touchItem) return;
+        const touch = e.changedTouches[0];
+        touchItem.style.display = 'none';
+        let elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        touchItem.style.display = 'block';
+
+        let box = elemBelow ? elemBelow.closest('.drop-zone') : null;
+
+        if (box) {
+            checkAnswer(box, touchItem.innerText, touchItem);
+        } else {
+            resetItemStyle(touchItem);
+        }
+        touchItem = null;
+    }
+
+    function resetItemStyle(item) {
+        item.style.position = 'static';
+        item.style.opacity = '1';
+        item.style.zIndex = '100';
+    }
+
+    // --- 核心：檢查答案 (嚴格模式) ---
+    function checkAnswer(box, userWord, itemEl) {
+        if (box.classList.contains('correct')) {
+            if(itemEl.style.position === 'fixed') resetItemStyle(itemEl);
+            return;
+        }
+
+        const correctWord = box.dataset.answer;
+
+        if (userWord === correctWord) {
+            // --- 答對 ---
+            box.innerText = userWord;
+            box.classList.add('correct');
+            itemEl.remove();
+            
+            matchesFound++;
+            
+            if (matchesFound === levels[currentLevelIdx].pairs.length) {
+                launchConfetti();
+                document.getElementById('next-btn').style.display = 'block';
+            }
+
+        } else {
+            // --- 答錯 (觸發重置) ---
+            if(itemEl.style.position === 'fixed') resetItemStyle(itemEl);
+            
+            box.classList.add('wrong-flash');
+            setTimeout(() => box.classList.remove('wrong-flash'), 500);
+
+            // 抓出整句題目
+            const fullSentence = box.parentElement.innerText.replace("______", correctWord);
+
+            showErrorReason(userWord, correctWord, fullSentence);
+        }
+    }
+
+    function showErrorReason(userWord, correctWord, sentence) {
+        const modal = document.getElementById('error-modal');
+        const msgText = document.getElementById('error-msg-text');
+        
+        msgText.innerHTML = `
+            你選擇了：<span style="color:#d32f2f; font-weight:bold;">${userWord}</span><br><br>
+            但這裡正確答案應該是：<span style="color:#2e7d32; font-weight:bold;">${correctWord}</span><br><br>
+            <div style="font-size:16px; background:#e8f5e9; padding:10px; border-radius:5px; text-align:left;">正確句子：${sentence}</div>
+            <br><span style="font-size:14px; color:#555;">(嚴格模式：必須全對才能進化，請重新挑戰！)</span>
+        `;
+        
+        modal.style.display = 'flex';
+    }
+
+    function resetLevel() {
+        document.getElementById('error-modal').style.display = 'none';
+        loadLevel(); // 重新載入
+    }
+
+    function nextLevel() {
+        currentLevelIdx++;
+        if (currentLevelIdx >= levels.length) {
+            // 全破
+            document.querySelector('.left-panel').style.display = 'none';
+            document.querySelector('.right-panel').style.display = 'none';
+            document.getElementById('end-screen').style.display = 'flex';
+            launchConfetti();
+        } else {
+            loadLevel();
+        }
+    }
+
+    function launchConfetti() {
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#4caf50', '#81c784', '#ffffff']
+        });
+    }
+</script>
+
+</body>
+</html>
