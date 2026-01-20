@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>新葉喵進化：語詞填空特訓</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+
+        body {
+            font-family: "Noto Sans TC", sans-serif;
+            background-color: #2e7d32; /* 森林綠背景 */
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- 左側：寶可夢展示區 (佔 40%) --- */
+        .left-panel {
+            width: 40%;
+            height: 100%;
+            background: linear-gradient(160deg, #66bb6a 0%, #a5d6a7 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-right: 6px solid #f1f8e9;
+            position: relative;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.3);
+            z-index: 2;
+        }
+
+        .poke-img-container {
+            width: 90%;
+            height: 55%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .poke-img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2));
+            transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        .poke-info {
+            text-align: center;
+            color: #1b5e20;
+            margin-top: 30px;
+        }
+
+        .poke-name {
+            font-size: 42px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 2px 2px 0 #2e7d32;
+            margin: 0;
+        }
+
+        .level-indicator {
+            font-size: 20px;
+            color: #1b5e20;
+            margin-top: 15px;
+            background: rgba(255,255,255,0.6);
+            padding: 6px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* --- 右側：遊戲區 (佔 60%) --- */
+        .right-panel {
+            width: 60%;
+            height: 100%;
+            background-color: #f1f8e9; /* 極淺綠 */
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background-image: radial-gradient(#dcedc8 10%, transparent 10%);
+            background-size: 20px 20px;
+        }
+
+        /* 頂部標題列 */
+        .game-header {
+            padding: 20px 30px;
+            background: #4caf50;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid #388e3c;
+        }
+
+        .current-char {
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: 2px;
+        }
+
+        .instruction {
+            font-size: 16px;
+            background: rgba(255,255,255,0.2);
+            padding: 8px 15px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        /* 遊戲捲動區 */
+        .game-content {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* 題目容器 (句子框) */
+        .targets-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            margin-bottom: 20px;
+        }
+
+        .sentence-box {
+            background: #fff;
+            border: 3px solid #81c784;
+            border-radius: 18px;
+            padding: 18px;
+            font-size: 20px;
+            color: #33691e;
+            line-height: 2;
+            position: relative;
+            box-shadow: 0 4px 0 #a5d6a7;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        /* 挖空區域 (Drop Zone) */
+        .drop-zone {
+            display: inline-block;
+            min-width: 110px;
+            height: 38px;
+            background: #f1f8e9;
+            border-bottom: 3px solid #43a047;
+            margin: 0 8px;
+            vertical-align: middle;
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.2s;
+            padding: 0 5px;
+            color: #1b5e20;
+            font-weight: bold;
+        }
+
+        /* 答對樣式 - 修改處：文字改為深綠色 */
+        .drop-zone.correct {
+            border: none;
+            background-color: #a5d6a7; /* 背景稍微淺一點，讓深色字更明顯 */
+            color: #003300; /* 修改：深綠色文字 */
+            box-shadow: 0 3px 0 #2e7d32;
+            line-height: 38px;
+            animation: popIn 0.3s;
+        }
+
+        /* 答錯樣式 (瞬間) */
+        .drop-zone.wrong-flash {
+            animation: shake 0.5s;
+            background-color: #ffcdd2;
+            border-color: #e53935;
+        }
+
+        /* 選項區 (語詞) */
+        .options-area {
+            background: rgba(255, 255, 255, 0.8);
+            border: 3px dashed #66bb6a;
+            border-radius: 25px;
+            padding: 25px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            min-height: 100px;
+        }
+
+        .draggable-item {
+            background: #fff;
+            color: #2e7d32;
+            border: 2px solid #2e7d32;
+            padding: 10px 25px;
+            border-radius: 50px;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: grab;
+            box-shadow: 0 5px 0 #1b5e20;
+            transition: transform 0.1s;
+            touch-action: none;
+            z-index: 100;
+        }
+
+        .draggable-item:active {
+            cursor: grabbing;
+            transform: scale(1.1);
+            background: #c8e6c9;
+        }
+
+        /* 按鈕 */
+        .next-btn {
+            margin: 0 auto;
+            padding: 15px 70px;
+            font-size: 26px;
+            background: #ff7043; /* 活力橘色 */
+            color: white;
+            border: 4px solid #fff;
+            border-radius: 50px;
+            font-weight: 900;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #d84315;
+            display: none;
+            animation: pulseBtn 1.5s infinite;
+        }
+
+        /* 錯誤提示 Modal */
+        .error-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .error-content {
+            background: white;
+            width: 85%;
+            max-width: 550px;
+            padding: 35px;
+            border-radius: 25px;
+            text-align: center;
+            border-top: 12px solid #e53935;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+        }
+        .error-title { color: #e53935; font-size: 34px; margin-bottom: 25px; font-weight: 900; }
+        .error-msg { font-size: 22px; color: #333; line-height: 1.6; margin-bottom: 35px; text-align: left; background:#fafafa; padding:20px; border-radius:15px; border-left: 6px solid #e53935;}
+        .error-btn {
+            background: #e53935; color: white; border: none; padding: 15px 45px;
+            font-size: 24px; border-radius: 50px; cursor: pointer; font-weight:bold;
+            box-shadow: 0 5px 0 #b71c1c;
+        }
+        .error-btn:active { transform: translateY(4px); box-shadow: none; }
+
+        /* 結束畫面 */
+        .end-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            flex-direction: column; justify-content: center; align-items: center;
+            z-index: 3000; color: white;
+        }
+
+        /* 動畫 */
+        @keyframes popIn { 0% { transform: scale(0); } 80% { transform: scale(1.2); } 100% { transform: scale(1); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+        @keyframes evolveFlash { 
+            0% { filter: brightness(1) drop-shadow(0 0 10px #66bb6a); } 
+            50% { filter: brightness(100) drop-shadow(0 0 50px white); } 
+            100% { filter: brightness(1) drop-shadow(0 0 10px #66bb6a); } 
+        }
+        @keyframes pulseBtn { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        /* RWD 調整 */
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; }
+            .left-panel { width: 100%; height: 35vh; border-right: none; border-bottom: 6px solid #f1f8e9; }
+            .right-panel { width: 100%; height: 65vh; }
+            .poke-name { font-size: 32px; }
+            .game-header { padding: 15px; }
+            .current-char { font-size: 26px; }
+            .sentence-box { font-size: 18px; padding: 12px; }
+            .drop-zone { min-width: 80px; height: 30px; line-height: 30px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="left-panel">
+        <div class="poke-img-container">
+            <img src="" id="poke-img" class="poke-img">
+        </div>
+        <div class="poke-info">
+            <h1 class="poke-name" id="poke-name">新葉喵</h1>
+            <div class="level-indicator" id="stage-indicator">第 1 / 7 關</div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="game-header">
+            <div class="current-char" id="level-header">第一關：潮</div>
+            <div class="instruction">將語詞拖入正確的句子中 (答錯需重來)</div>
+        </div>
+
+        <div class="game-content">
+            <div class="targets-grid" id="targets-grid">
+                </div>
+
+            <div class="options-area" id="options-area">
+                </div>
+
+            <button class="next-btn" id="next-btn" onclick="nextLevel()">進化！下一關</button>
+        </div>
+    </div>
+
+    <div class="error-modal" id="error-modal">
+        <div class="error-content">
+            <div class="error-title">🍃 葉子沒瞄準好！</div>
+            <div class="error-msg" id="error-msg-text"></div>
+            <button class="error-btn" onclick="resetLevel()">重新特訓</button>
+        </div>
+    </div>
+
+    <div class="end-screen" id="end-screen">
+        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/908.png" style="width:320px; filter: drop-shadow(0 0 30px #66bb6a);">
+        <h1 style="color:#66bb6a; font-size:42px; margin-top:20px; text-shadow:2px 2px 0 #000;">千變萬化！</h1>
+        <h2 style="color:#fff;">魔幻假面喵 華麗登場！</h2>
+        <button class="next-btn" style="display:block; background:#fff; color:#2e7d32; margin-top:30px; box-shadow:0 6px 0 #ccc;" onclick="location.reload()">再次挑戰</button>
+    </div>
+
+<script>
+    // --- 遊戲資料庫 (7關) ---
+    const levels = [
+        {
+            char: "潮",
+            pairs: [
+                { word: "潮濕", sentence: "最近一直下雨，這種_____的天氣讓衣服都很難乾。" },
+                { word: "潮流", sentence: "哥哥打扮得很時髦，總是走在時代的_____尖端。" },
+                { word: "潮水", sentence: "_____退去後，沙灘上留下了許多美麗的貝殼。" },
+                { word: "漲潮", sentence: "_____時海水會淹沒沙灘，遊客要趕快上岸才安全。" },
+                { word: "退潮", sentence: "我們趁著_____的時候，到海邊觀察招潮蟹。" }
+            ]
+        },
+        {
+            char: "炸",
+            pairs: [
+                { word: "油炸", sentence: "多吃_____的食物容易發胖，還是少吃一點比較好。" },
+                { word: "炸藥", sentence: "_____是非常危險的物品，不可以隨便靠近。" },
+                { word: "轟炸", sentence: "電影裡的戰機正在_____敵人的基地。" },
+                { word: "炸開", sentence: "鞭炮突然_____，發出巨大的聲響，嚇了我一大跳。" }
+            ]
+        },
+        {
+            char: "旺",
+            pairs: [
+                { word: "旺盛", sentence: "小狗的精力_____，在公園裡跑個不停。" },
+                { word: "興旺", sentence: "這家餐廳的生意非常_____，每天都高朋滿座。" },
+                { word: "旺季", sentence: "夏天是冰店的_____，老闆忙得不可開交。" }
+            ]
+        },
+        {
+            char: "爆",
+            pairs: [
+                { word: "爆發", sentence: "兩國之間突然_____了戰爭，造成許多人流離失所。" },
+                { word: "爆裂", sentence: "冬天太冷了，水管容易因為結冰而_____。" },
+                { word: "引爆", sentence: "拆彈專家正在小心翼翼地_____這枚未爆彈。" },
+                { word: "爆滿", sentence: "這部電影太好看了，電影院裡場場_____。" }
+            ]
+        },
+        {
+            char: "梭",
+            pairs: [
+                { word: "穿梭", sentence: "服務生在忙碌的餐廳裡來回_____，為客人送餐。" },
+                { word: "太空梭", sentence: "太空人搭乘_____進入宇宙進行科學實驗。" }
+            ]
+        },
+        {
+            char: "徵",
+            pairs: [
+                { word: "特徵", sentence: "長長的鼻子是大象最明顯的_____。" },
+                { word: "徵求", sentence: "老師_____大家的同意後，決定把班費捐給孤兒院。" },
+                { word: "徵兆", sentence: "燕子低飛是大雨將至的_____。" },
+                { word: "徵收", sentence: "政府為了拓寬馬路，依法_____了這塊土地。" },
+                { word: "應徵", sentence: "姊姊準備好履歷表，明天要去_____一份新的工作。" }
+            ]
+        },
+        {
+            char: "揚",
+            pairs: [
+                { word: "表揚", sentence: "他拾金不昧的行為，受到了校長的公開_____。" },
+                { word: "宣揚", sentence: "我們要努力_____環保觀念，讓更多人愛護地球。" },
+                { word: "飄揚", sentence: "鮮豔的國旗在操場上迎風_____。" },
+                { word: "讚揚", sentence: "觀眾熱烈鼓掌，_____這場精彩的音樂會。" }
+            ]
+        }
+    ];
+
+    // --- 新葉喵進化設定 ---
+    const stages = [
+        // Sprigatito (新葉喵)
+        { name: "新葉喵", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/906.png" },
+        // Floragato (蒂蕾喵)
+        { name: "蒂蕾喵", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/907.png" },
+        // Meowscarada (魔幻假面喵)
+        { name: "魔幻假面喵", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/908.png" }
+    ];
+
+    let currentLevelIdx = 0;
+    let matchesFound = 0;
+
+    // --- 初始化 ---
+    window.onload = function() {
+        loadLevel();
+    };
+
+    function loadLevel() {
+        const levelData = levels[currentLevelIdx];
+        
+        // 更新標題
+        const chineseNums = ["一", "二", "三", "四", "五", "六", "七"];
+        document.getElementById('level-header').innerText = `第${chineseNums[currentLevelIdx]}關：${levelData.char}`;
+        document.getElementById('stage-indicator').innerText = `第 ${currentLevelIdx + 1} / 7 關`;
+        document.getElementById('next-btn').style.display = 'none';
+        matchesFound = 0;
+
+        // 更新左側寶可夢
+        updatePokemon();
+
+        // 建立題目區 (Sentences)
+        const targetsGrid = document.getElementById('targets-grid');
+        targetsGrid.innerHTML = '';
+        
+        levelData.pairs.forEach(pair => {
+            let sentenceBox = document.createElement('div');
+            sentenceBox.className = 'sentence-box';
+            
+            // 將句子中的 _____ 替換為放置區 div
+            const parts = pair.sentence.split('_____');
+            
+            let part1 = document.createElement('span');
+            part1.innerText = parts[0];
+            sentenceBox.appendChild(part1);
+
+            let dropZone = document.createElement('div');
+            dropZone.className = 'drop-zone';
+            dropZone.dataset.answer = pair.word; // 答案
+            // 註冊放置事件
+            dropZone.addEventListener('dragover', handleDragOver);
+            dropZone.addEventListener('drop', handleDrop);
+            sentenceBox.appendChild(dropZone);
+
+            let part2 = document.createElement('span');
+            part2.innerText = parts[1];
+            sentenceBox.appendChild(part2);
+            
+            targetsGrid.appendChild(sentenceBox);
+        });
+
+        // 建立選項區 (Draggables)
+        const optionsArea = document.getElementById('options-area');
+        optionsArea.innerHTML = '';
+        
+        let shuffledPairs = [...levelData.pairs].sort(() => 0.5 - Math.random());
+        
+        shuffledPairs.forEach(pair => {
+            let item = document.createElement('div');
+            item.className = 'draggable-item';
+            item.draggable = true;
+            item.innerText = pair.word;
+            
+            item.addEventListener('dragstart', handleDragStart);
+            item.addEventListener('touchstart', handleTouchStart, {passive: false});
+            item.addEventListener('touchmove', handleTouchMove, {passive: false});
+            item.addEventListener('touchend', handleTouchEnd);
+
+            optionsArea.appendChild(item);
+        });
+    }
+
+    function updatePokemon() {
+        const img = document.getElementById('poke-img');
+        const nameEl = document.getElementById('poke-name');
+        let stage = 0;
+        
+        // 0-1關: 新葉喵 (2關)
+        // 2-4關: 蒂蕾喵 (3關)
+        // 5-6關: 魔幻假面喵 (2關)
+        if (currentLevelIdx >= 2 && currentLevelIdx < 5) stage = 1;
+        if (currentLevelIdx >= 5) stage = 2;
+
+        if (img.src !== stages[stage].img) {
+            img.classList.add('evolving');
+            setTimeout(() => {
+                img.src = stages[stage].img;
+                nameEl.innerText = stages[stage].name;
+                img.classList.remove('evolving');
+            }, 500);
+        } else {
+            img.src = stages[stage].img;
+            nameEl.innerText = stages[stage].name;
+        }
+    }
+
+    // --- 拖曳邏輯 ---
+    let draggedItem = null;
+
+    function handleDragStart(e) {
+        draggedItem = e.target;
+        e.dataTransfer.setData('text/plain', e.target.innerText);
+    }
+
+    function handleDragOver(e) {
+        e.preventDefault(); 
+        if (!e.currentTarget.classList.contains('correct')) {
+            e.currentTarget.style.backgroundColor = '#a5d6a7';
+        }
+    }
+
+    function handleDrop(e) {
+        e.preventDefault();
+        const box = e.currentTarget;
+        if (!box.classList.contains('correct')) {
+            box.style.backgroundColor = '#f1f8e9';
+        }
+        const word = e.dataTransfer.getData('text/plain');
+        checkAnswer(box, word, draggedItem);
+    }
+
+    // --- 觸控邏輯 ---
+    let touchItem = null;
+
+    function handleTouchStart(e) {
+        e.preventDefault();
+        touchItem = e.target;
+        touchItem.style.position = 'fixed';
+        touchItem.style.opacity = '0.8';
+        touchItem.style.zIndex = '1000';
+        const touch = e.touches[0];
+        touchItem.style.left = (touch.clientX - touchItem.offsetWidth / 2) + 'px';
+        touchItem.style.top = (touch.clientY - touchItem.offsetHeight / 2) + 'px';
+    }
+
+    function handleTouchMove(e) {
+        if (!touchItem) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        touchItem.style.left = (touch.clientX - touchItem.offsetWidth / 2) + 'px';
+        touchItem.style.top = (touch.clientY - touchItem.offsetHeight / 2) + 'px';
+    }
+
+    function handleTouchEnd(e) {
+        if (!touchItem) return;
+        const touch = e.changedTouches[0];
+        touchItem.style.display = 'none';
+        let elemBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+        touchItem.style.display = 'block';
+
+        let box = elemBelow ? elemBelow.closest('.drop-zone') : null;
+
+        if (box) {
+            checkAnswer(box, touchItem.innerText, touchItem);
+        } else {
+            resetItemStyle(touchItem);
+        }
+        touchItem = null;
+    }
+
+    function resetItemStyle(item) {
+        item.style.position = 'static';
+        item.style.opacity = '1';
+        item.style.zIndex = '100';
+    }
+
+    // --- 核心：檢查答案 (嚴格模式) ---
+    function checkAnswer(box, userWord, itemEl) {
+        if (box.classList.contains('correct')) {
+            if(itemEl.style.position === 'fixed') resetItemStyle(itemEl);
+            return;
+        }
+
+        const correctWord = box.dataset.answer;
+
+        if (userWord === correctWord) {
+            // --- 答對 ---
+            box.innerText = userWord;
+            box.classList.add('correct');
+            itemEl.remove();
+            
+            matchesFound++;
+            
+            if (matchesFound === levels[currentLevelIdx].pairs.length) {
+                launchConfetti();
+                document.getElementById('next-btn').style.display = 'block';
+            }
+
+        } else {
+            // --- 答錯 (觸發重置) ---
+            if(itemEl.style.position === 'fixed') resetItemStyle(itemEl);
+            
+            box.classList.add('wrong-flash');
+            setTimeout(() => box.classList.remove('wrong-flash'), 500);
+
+            // 抓出整句題目
+            const fullSentence = box.parentElement.innerText.replace("_____", correctWord).replace(userWord, correctWord);
+
+            showErrorReason(userWord, correctWord, fullSentence);
+        }
+    }
+
+    function showErrorReason(userWord, correctWord, sentence) {
+        const modal = document.getElementById('error-modal');
+        const msgText = document.getElementById('error-msg-text');
+        
+        msgText.innerHTML = `
+            你選擇了：<span style="color:#e53935; font-weight:bold;">${userWord}</span><br><br>
+            但正確答案應該是：<span style="color:#2e7d32; font-weight:bold;">${correctWord}</span><br><br>
+            <div style="font-size:18px; background:#e8f5e9; padding:15px; border-radius:10px; text-align:left; border-left:4px solid #66bb6a;">正確句子：${sentence}</div>
+            <br><span style="font-size:15px; color:#555;">(嚴格特訓：必須一次全對才能進化，請重新挑戰！)</span>
+        `;
+        
+        modal.style.display = 'flex';
+    }
+
+    function resetLevel() {
+        document.getElementById('error-modal').style.display = 'none';
+        loadLevel(); // 重新載入
+    }
+
+    function nextLevel() {
+        currentLevelIdx++;
+        if (currentLevelIdx >= levels.length) {
+            // 全破
+            document.querySelector('.left-panel').style.display = 'none';
+            document.querySelector('.right-panel').style.display = 'none';
+            document.getElementById('end-screen').style.display = 'flex';
+            launchConfetti();
+        } else {
+            loadLevel();
+        }
+    }
+
+    function launchConfetti() {
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#66bb6a', '#a5d6a7', '#ff7043', '#ffffff']
+        });
+    }
+</script>
+
+</body>
+</html>
