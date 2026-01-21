@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>語詞解釋配對大挑戰</title>
+    <style>
+        body {
+            font-family: "Microsoft JhengHei", Arial, sans-serif;
+            background-color: #f0f8ff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        h1 {
+            color: #4a90e2;
+            margin-bottom: 10px;
+        }
+
+        .description {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #eee;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #4a90e2;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .question-box {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 25px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px dashed #bdd7ee;
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 500px) {
+            .options-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .btn {
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            background-color: white;
+            border-radius: 12px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #555;
+        }
+
+        .btn:hover:not(:disabled) {
+            background-color: #e6f3ff;
+            border-color: #4a90e2;
+            transform: translateY(-2px);
+        }
+
+        .btn.correct {
+            background-color: #d4edda;
+            border-color: #28a745;
+            color: #155724;
+        }
+
+        .btn.wrong {
+            background-color: #f8d7da;
+            border-color: #dc3545;
+            color: #721c24;
+        }
+
+        .btn:disabled {
+            cursor: default;
+            transform: none;
+        }
+
+        .next-btn {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            display: none; /* Hidden by default */
+            margin: 0 auto;
+        }
+
+        .next-btn:hover {
+            background-color: #357abd;
+        }
+
+        .result-box {
+            display: none;
+        }
+
+        .score-display {
+            font-size: 3em;
+            color: #ff6b6b;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .feedback-text {
+            font-size: 1.2em;
+            color: #555;
+            margin-bottom: 20px;
+        }
+
+        .restart-btn {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .restart-btn:hover {
+            background-color: #218838;
+        }
+
+        .stats {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>國語語詞配對挑戰</h1>
+        <p class="description">請根據解釋選出正確的語詞。起步 10 分，答對一題加 3 分！</p>
+        
+        <div id="quiz-area">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress"></div>
+            </div>
+            <div class="stats">第 <span id="current-q">1</span> / 30 題</div>
+            
+            <div class="question-box" id="question-text">
+                題目載入中...
+            </div>
+
+            <div class="options-grid" id="options-area">
+                </div>
+
+            <button class="next-btn" id="next-btn" onclick="nextQuestion()">下一題 ➔</button>
+        </div>
+
+        <div class="result-box" id="result-area">
+            <h2>測驗結束！</h2>
+            <div class="score-display">
+                <span id="final-score">0</span> 分
+            </div>
+            <p class="feedback-text" id="feedback-text"></p>
+            <button class="restart-btn" onclick="restartQuiz()">再挑戰一次</button>
+        </div>
+    </div>
+
+    <script>
+        const quizData = [
+            { word: "慶賀", def: "向別人說恭喜，替對方感到開心。" },
+            { word: "慶典", def: "很隆重、很盛大的慶祝活動（例如：國慶日的遊行）。" },
+            { word: "慶幸", def: "覺得運氣很好，還好沒有發生壞事情（例如：慶幸出門時有帶傘，不然就淋濕了）。" },
+            { word: "釋懷", def: "心裡本來很在意、很難過，後來想通了，就不再難過了。" },
+            { word: "忘懷", def: "忘記。（通常用在「無法忘懷」，就是忘不了的意思）。" },
+            { word: "祥和", def: "氣氛很安靜、很溫和，讓人覺得很舒服。" },
+            { word: "祥瑞", def: "好運氣的徵兆（例如：看見彩虹覺得是祥瑞的象徵）。" },
+            { word: "不祥", def: "感覺好像會有壞事要發生。" },
+            { word: "儀式", def: "典禮的程序和規矩（例如：升旗儀式）。" },
+            { word: "儀器", def: "做實驗或檢查時用的精密器具（例如：顯微鏡、測量儀）。" },
+            { word: "儀態", def: "一個人站著或坐著的姿勢好不好看。" },
+            { word: "序幕", def: "表演剛開始的第一個段落。" },
+            { word: "自序", def: "作者在書的最前面，自己寫的一篇文章，介紹為什麼要寫這本書。" },
+            { word: "揮毫", def: "拿著毛筆寫書法或畫畫。" },
+            { word: "分毫", def: "很小的單位，形容極少的數量。" },
+            { word: "吉時", def: "適合做重要事情的好時間。" },
+            { word: "吉日", def: "適合辦喜事的好日子。" },
+            { word: "潮流", def: "現在最流行、大家最喜歡的趨勢。" },
+            { word: "轟炸", def: "用炸彈攻擊。" },
+            { word: "旺盛", def: "生命力很強，或是氣勢很高（例如：火燒得很旺盛、精力旺盛）。" },
+            { word: "興旺", def: "形容生意很好，或是發展得很好。" },
+            { word: "旺季", def: "生意最好、客人最多的季節（例如：夏天是冰店的旺季）。" },
+            { word: "引爆", def: "點火讓炸彈爆炸，或是引起某個事件。" },
+            { word: "穿梭", def: "形容來來往往，快速地通過（例如：車子在馬路上穿梭）。" },
+            { word: "徵兆", def: "事情發生前出現的跡象（例如：烏雲密布是下雨的徵兆）。" },
+            { word: "徵收", def: "政府為了公共用途，依法向人民收取土地或金錢。" },
+            { word: "應徵", def: "去面試，申請想要的工作。" },
+            { word: "宣揚", def: "大聲或公開地傳播，讓大家知道。" },
+            { word: "飄揚", def: "在風中輕輕飛舞的樣子（例如：國旗在空中飄揚）。" },
+            { word: "讚揚", def: "稱讚、誇獎。" }
+        ];
+
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let shuffledQuestions = [];
+
+        // 啟動測驗
+        function initQuiz() {
+            // 隨機打亂題目順序
+            shuffledQuestions = [...quizData].sort(() => Math.random() - 0.5);
+            currentQuestionIndex = 0;
+            score = 0;
+            
+            document.getElementById('quiz-area').style.display = 'block';
+            document.getElementById('result-area').style.display = 'none';
+            
+            loadQuestion();
+        }
+
+        function loadQuestion() {
+            const questionData = shuffledQuestions[currentQuestionIndex];
+            
+            // 更新進度
+            document.getElementById('current-q').textContent = currentQuestionIndex + 1;
+            const progressPercent = ((currentQuestionIndex) / quizData.length) * 100;
+            document.getElementById('progress').style.width = progressPercent + '%';
+
+            // 顯示題目
+            document.getElementById('question-text').textContent = questionData.def;
+
+            // 準備選項 (1個正確 + 3個錯誤)
+            let options = [questionData.word];
+            
+            // 隨機抽取3個不重複的錯誤答案
+            let tempWords = quizData.filter(item => item.word !== questionData.word).map(item => item.word);
+            tempWords.sort(() => Math.random() - 0.5);
+            options.push(tempWords[0], tempWords[1], tempWords[2]);
+
+            // 打亂選項順序
+            options.sort(() => Math.random() - 0.5);
+
+            // 渲染按鈕
+            const optionsArea = document.getElementById('options-area');
+            optionsArea.innerHTML = ''; // 清空
+            document.getElementById('next-btn').style.display = 'none';
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.textContent = opt;
+                btn.onclick = () => checkAnswer(btn, opt, questionData.word);
+                optionsArea.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedBtn, selectedWord, correctWord) {
+            // 鎖定所有按鈕
+            const buttons = document.querySelectorAll('.options-grid .btn');
+            buttons.forEach(btn => btn.disabled = true);
+
+            if (selectedWord === correctWord) {
+                selectedBtn.classList.add('correct');
+                score++;
+            } else {
+                selectedBtn.classList.add('wrong');
+                // 標示出正確答案
+                buttons.forEach(btn => {
+                    if (btn.textContent === correctWord) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+
+            document.getElementById('next-btn').style.display = 'block';
+        }
+
+        function nextQuestion() {
+            currentQuestionIndex++;
+            if (currentQuestionIndex < quizData.length) {
+                loadQuestion();
+            } else {
+                showResult();
+            }
+        }
+
+        function showResult() {
+            document.getElementById('quiz-area').style.display = 'none';
+            document.getElementById('result-area').style.display = 'block';
+            
+            // 計算總分：基本分 10 + (答對題數 * 3)
+            const finalScore = 10 + (score * 3);
+            document.getElementById('final-score').textContent = finalScore;
+
+            let feedback = "";
+            if (finalScore === 100) {
+                feedback = "太厲害了！全部答對，你是語詞小天才！🌟";
+            } else if (finalScore >= 90) {
+                feedback = "非常棒！只差一點點就滿分了！👍";
+            } else if (finalScore >= 80) {
+                feedback = "表現不錯喔！大部分都學會了。😊";
+            } else {
+                feedback = "繼續加油！多練習幾次會更熟練喔。💪";
+            }
+            document.getElementById('feedback-text').textContent = feedback;
+        }
+
+        function restartQuiz() {
+            initQuiz();
+        }
+
+        // 頁面載入時啟動
+        window.onload = initQuiz;
+
+    </script>
+</body>
+</html>
