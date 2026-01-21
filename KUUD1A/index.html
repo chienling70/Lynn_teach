@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>炎兔兒進化：苗栗火旁龍問答</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+
+        body {
+            font-family: "Noto Sans TC", sans-serif;
+            background-color: #e65100; /* 活力橘紅 */
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- 左側：寶可夢展示區 (佔 40%) --- */
+        .left-panel {
+            width: 40%;
+            height: 100%;
+            background: linear-gradient(160deg, #ff9800 0%, #f57c00 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-right: 6px solid #ffe0b2;
+            position: relative;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.3);
+            z-index: 2;
+        }
+
+        .poke-img-container {
+            width: 90%;
+            height: 55%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .poke-img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2));
+            transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        .poke-info {
+            text-align: center;
+            color: #fff;
+            margin-top: 30px;
+        }
+
+        .poke-name {
+            font-size: 42px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 2px 2px 0 #e65100;
+            margin: 0;
+        }
+
+        .level-indicator {
+            font-size: 20px;
+            color: #e65100;
+            margin-top: 15px;
+            background: rgba(255,255,255,0.8);
+            padding: 6px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* --- 右側：遊戲區 (佔 60%) --- */
+        .right-panel {
+            width: 60%;
+            height: 100%;
+            background-color: #fff3e0; /* 淺橘色 */
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background-image: radial-gradient(#ffcc80 10%, transparent 10%);
+            background-size: 20px 20px;
+        }
+
+        /* 頂部標題列 */
+        .game-header {
+            padding: 20px 30px;
+            background: #ff6f00;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid #e65100;
+        }
+
+        .header-title {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }
+
+        .progress-text {
+            font-size: 18px;
+            background: rgba(0,0,0,0.2);
+            padding: 5px 15px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        /* 遊戲主要內容區 */
+        .game-content {
+            flex: 1;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 題目框 */
+        .question-box {
+            background: #fff;
+            width: 100%;
+            padding: 30px;
+            border-radius: 20px;
+            border: 4px solid #ffb74d;
+            box-shadow: 0 8px 0 #ff9800;
+            text-align: center;
+            font-size: 28px;
+            color: #e65100;
+            font-weight: bold;
+            line-height: 1.5;
+            position: relative;
+            animation: fadeIn 0.5s;
+        }
+
+        /* 選項按鈕區 (單欄顯示較清楚) */
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .option-btn {
+            background: white;
+            border: 3px solid #ff9800;
+            color: #e65100;
+            font-size: 24px;
+            padding: 15px 25px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.1s;
+            font-weight: bold;
+            box-shadow: 0 5px 0 #f57c00;
+            font-family: "Noto Sans TC", sans-serif;
+            text-align: left;
+        }
+
+        .option-btn:hover {
+            background-color: #ffe0b2;
+            transform: translateY(-2px);
+        }
+
+        .option-btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* 答對/答錯樣式 */
+        .option-btn.correct {
+            background-color: #66bb6a !important;
+            color: white !important;
+            border-color: #2e7d32 !important;
+            box-shadow: 0 5px 0 #1b5e20 !important;
+        }
+
+        .option-btn.wrong {
+            background-color: #ef5350 !important;
+            color: white !important;
+            border-color: #b71c1c !important;
+            box-shadow: 0 5px 0 #c62828 !important;
+        }
+
+        /* 錯誤提示 Modal */
+        .feedback-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .feedback-content {
+            background: white;
+            width: 85%;
+            max-width: 550px;
+            padding: 35px;
+            border-radius: 25px;
+            text-align: center;
+            border-top: 12px solid #ff6f00;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+        }
+        .feedback-title { color: #e65100; font-size: 36px; margin-bottom: 20px; font-weight: 900; }
+        .feedback-msg { font-size: 22px; color: #333; line-height: 1.6; margin-bottom: 30px; background:#fff3e0; padding:15px; border-radius:15px; text-align:left;}
+        .feedback-btn {
+            background: #ff6f00; color: white; border: none; padding: 15px 45px;
+            font-size: 24px; border-radius: 50px; cursor: pointer; font-weight:bold;
+            box-shadow: 0 5px 0 #e65100;
+        }
+        .feedback-btn:active { transform: translateY(4px); box-shadow: none; }
+
+        /* 結束畫面 */
+        .end-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            flex-direction: column; justify-content: center; align-items: center;
+            z-index: 3000; color: white;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes popIn { 0% { transform: scale(0); } 80% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        /* RWD 調整 */
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; }
+            .left-panel { width: 100%; height: 35vh; border-right: none; border-bottom: 6px solid #ffe0b2; }
+            .right-panel { width: 100%; height: 65vh; }
+            .poke-name { font-size: 32px; }
+            .game-content { padding: 20px; }
+            .question-box { font-size: 22px; padding: 20px; }
+            .option-btn { font-size: 20px; padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="left-panel">
+        <div class="poke-img-container">
+            <img src="" id="poke-img" class="poke-img">
+        </div>
+        <div class="poke-info">
+            <h1 class="poke-name" id="poke-name">炎兔兒</h1>
+            <div class="level-indicator" id="stage-indicator">階段一：熱身運動</div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="game-header">
+            <div class="header-title">請點選正確答案</div>
+            <div class="progress-text">題號：<span id="q-progress">1</span> / 14</div>
+        </div>
+
+        <div class="game-content">
+            <div class="question-box" id="question-text">
+                題目載入中...
+            </div>
+
+            <div class="options-grid" id="options-grid">
+                </div>
+        </div>
+    </div>
+
+    <div class="feedback-modal" id="feedback-modal">
+        <div class="feedback-content">
+            <div class="feedback-title">🔥 踢偏了！</div>
+            <div class="feedback-msg" id="feedback-text"></div>
+            <button class="feedback-btn" onclick="resetStage()">重新挑戰本階段</button>
+        </div>
+    </div>
+
+    <div class="end-screen" id="end-screen">
+        
+        <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/815.png" style="width:320px; filter: drop-shadow(0 0 30px #ff6f00);">
+        <h1 style="color:#ff6f00; font-size:42px; margin-top:20px; text-shadow:2px 2px 0 #000;">火焰射門！</h1>
+        <h2 style="color:#fff;">特訓大成功！</h2>
+        <button class="feedback-btn" style="background:#fff; color:#e65100; margin-top:30px;" onclick="location.reload()">再來一次</button>
+    </div>
+
+<script>
+    // --- 題目資料 (14題) ---
+    // q: 題目, ans: 正確答案, options: 所有選項 (不含數字)
+    const allQuestions = [
+        { 
+            q: "作者阿公家的地點在哪裡？", 
+            ans: "苗栗", 
+            options: ["臺北", "苗栗", "臺南", "高雄"] 
+        },
+        { 
+            q: "作者回阿公家是為了參加什麼活動？", 
+            ans: "火旁龍慶元宵", 
+            options: ["放天燈", "炸寒單", "火旁龍慶元宵", "媽祖遶境"] 
+        },
+        { 
+            q: "作者第一次參加這個活動的心情是如何的？", 
+            ans: "滿懷期待", 
+            options: ["滿懷期待", "緊張害怕", "毫無感覺", "依依不捨"] 
+        },
+        { 
+            q: "活動的第一天，是以什麼儀式拉開序幕？", 
+            ans: "祥龍點睛", 
+            options: ["祥龍點睛", "畫龍點睛", "舞龍舞獅", "敲鑼打鼓"] 
+        },
+        { 
+            q: "人們使用什麼工具為神龍點睛？點睛後的龍有何改變？", 
+            ans: "用毛筆紅墨水，從毫無生氣變神氣", 
+            options: ["用貼紙，變得可愛", "用彩色筆，變得五彩繽紛", "用手指沾水，變得乾淨", "用毛筆紅墨水，從毫無生氣變神氣"] 
+        },
+        // --- 階段二開始 (Index 5) ---
+        { 
+            q: "元宵節前一天，家家戶戶如何「歡喜迎龍」？", 
+            ans: "挨家挨戶踩街", 
+            options: ["在家看電視", "到廟裡拜拜", "挨家挨戶踩街", "在學校操場跑步"] 
+        },
+        { 
+            q: "人們對「歡喜迎龍」活動有什麼期望？", 
+            ans: "迎來新年好福氣、帶來吉祥好運", 
+            options: ["迎來新年好福氣、帶來吉祥好運", "考試一百分、學業進步", "賺大錢、發大財", "身體健康、長命百歲"] 
+        },
+        { 
+            q: "在「火旁龍之夜」，居民們以什麼活動慶祝元宵節？", 
+            ans: "炸龍", 
+            options: ["烤肉", "放風箏", "賞花燈", "炸龍"] 
+        },
+        { 
+            q: "「炸龍」是如何進行的？現場是什麼樣的景象？", 
+            ans: "爆竹射龍身，神龍穿梭在濃煙火光中", 
+            options: ["大家圍著神龍跳舞唱歌", "用水槍射龍，大家全身溼答答", "爆竹射龍身，神龍穿梭在濃煙火光中", "神龍在天上飛，大家安靜觀賞"] 
+        },
+        { 
+            q: "「火旁龍之夜」對整個元宵節活動的意義是什麼？", 
+            ans: "活動高潮", 
+            options: ["活動開始", "活動高潮", "中場休息", "活動結束"] 
+        },
+        // --- 階段三開始 (Index 10) ---
+        { 
+            q: "什麼儀式宣告了活動進入尾聲？", 
+            ans: "化龍返天", 
+            options: ["飛龍在天", "祥龍獻瑞", "神龍擺尾", "化龍返天"] 
+        },
+        { 
+            q: "「化龍返天」的儀式如何進行？", 
+            ans: "火化神龍，信眾雙手合十目送", 
+            options: ["火化神龍，信眾雙手合十目送", "把龍放入大海，大家揮手道別", "把龍埋在土裡，祈求豐收", "把龍帶回家做紀念"] 
+        },
+        { 
+            q: "離開苗栗時，阿公送了作者哪兩樣臨別贈禮？", 
+            ans: "明信片、福菜", 
+            options: ["紅包、糖果", "明信片、福菜", "玩具、餅乾", "課本、文具"] 
+        },
+        { 
+            q: "作者離開苗栗時的心情如何？", 
+            ans: "依依不捨", 
+            options: ["歸心似箭", "喜出望外", "憤憤不平", "依依不捨"] 
+        }
+    ];
+
+    // --- 遊戲設定 ---
+    // 寶可夢進化資料 (炎兔兒 -> 騰蹴小將 -> 閃焰王牌)
+    const stages = [
+        { name: "炎兔兒", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/813.png", title: "階段一：熱身運動" },
+        { name: "騰蹴小將", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/814.png", title: "階段二：靈活步伐" },
+        { name: "閃焰王牌", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/815.png", title: "階段三：火焰射門" }
+    ];
+
+    let currentQIndex = 0;
+    let currentStage = 0;
+
+    window.onload = function() {
+        loadQuestion();
+        updatePokemon();
+    };
+
+    function loadQuestion() {
+        const qData = allQuestions[currentQIndex];
+        
+        // 更新 UI
+        document.getElementById('q-progress').innerText = currentQIndex + 1;
+        document.getElementById('question-text').innerText = qData.q;
+        
+        // 產生選項
+        const optionsGrid = document.getElementById('options-grid');
+        optionsGrid.innerHTML = '';
+        
+        // 洗牌選項
+        let opts = [...qData.options];
+        opts.sort(() => 0.5 - Math.random());
+        
+        // 渲染按鈕 (無數字)
+        opts.forEach(opt => {
+            let btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => checkAnswer(opt, btn, qData.ans);
+            optionsGrid.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selected, btn, correct) {
+        // 防止重複點擊
+        const allBtns = document.querySelectorAll('.option-btn');
+        allBtns.forEach(b => b.disabled = true);
+
+        if (selected === correct) {
+            // 答對
+            btn.classList.add('correct');
+            btn.style.transform = "scale(1.02)";
+            
+            setTimeout(() => {
+                nextQuestion();
+            }, 800); 
+        } else {
+            // 答錯
+            btn.classList.add('wrong');
+            // 找出正確按鈕並標示
+            allBtns.forEach(b => {
+                if (b.innerText === correct) b.classList.add('correct');
+            });
+            
+            // 顯示錯誤訊息
+            setTimeout(() => {
+                showError(selected, correct);
+            }, 800);
+        }
+    }
+
+    function nextQuestion() {
+        currentQIndex++;
+        
+        // 檢查是否進化 (進入下一階段)
+        if (currentQIndex === 5) { // 進入階段二 (騰蹴小將)
+            currentStage = 1;
+            triggerEvolution();
+        } else if (currentQIndex === 10) { // 進入階段三 (閃焰王牌)
+            currentStage = 2;
+            triggerEvolution();
+        }
+
+        // 檢查是否全破
+        if (currentQIndex >= allQuestions.length) {
+            gameClear();
+        } else {
+            loadQuestion();
+        }
+    }
+
+    function updatePokemon() {
+        const data = stages[currentStage];
+        document.getElementById('poke-name').innerText = data.name;
+        document.getElementById('stage-indicator').innerText = data.title;
+        document.getElementById('poke-img').src = data.img;
+    }
+
+    function triggerEvolution() {
+        const img = document.getElementById('poke-img');
+        img.style.filter = "brightness(100) drop-shadow(0 0 20px white)";
+        img.style.transform = "scale(1.2) rotate(10deg)";
+        
+        setTimeout(() => {
+            updatePokemon();
+            img.style.filter = "";
+            img.style.transform = "scale(1)";
+            launchConfetti();
+        }, 600);
+    }
+
+    function showError(wrongAns, correctAns) {
+        const modal = document.getElementById('feedback-modal');
+        const text = document.getElementById('feedback-text');
+        
+        // 抓取題目
+        const question = document.getElementById('question-text').innerText;
+
+        text.innerHTML = `
+            <div style="font-size:18px; font-weight:bold; margin-bottom:10px;">題目：${question}</div>
+            你選了：<span style="color:#d32f2f; font-weight:bold;">${wrongAns}</span><br>
+            正確是：<span style="color:#2e7d32; font-weight:bold;">${correctAns}</span><br><br>
+            <span style="font-size:15px; color:#555;">(嚴格特訓：本階段必須重新挑戰！)</span>
+        `;
+        modal.style.display = 'flex';
+    }
+
+    function resetStage() {
+        document.getElementById('feedback-modal').style.display = 'none';
+        
+        // 判斷目前在哪個階段，重置到該階段的第一題
+        if (currentQIndex < 5) {
+            currentQIndex = 0; // 階段一重來
+        } else if (currentQIndex < 10) {
+            currentQIndex = 5; // 階段二重來
+        } else {
+            currentQIndex = 10; // 階段三重來
+        }
+        
+        loadQuestion();
+    }
+
+    function gameClear() {
+        document.querySelector('.left-panel').style.display = 'none';
+        document.querySelector('.right-panel').style.display = 'none';
+        document.getElementById('end-screen').style.display = 'flex';
+        launchConfetti();
+    }
+
+    function launchConfetti() {
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#ff6f00', '#e65100', '#ffffff']
+        });
+    }
+</script>
+
+</body>
+</html>
