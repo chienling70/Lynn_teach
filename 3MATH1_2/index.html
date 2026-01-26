@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>迷你冰進化：分數大挑戰 (修復版)</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
+
+        body {
+            font-family: "Noto Sans TC", sans-serif;
+            background-color: #E1F5FE;
+            background-image: 
+                radial-gradient(#B3E5FC 15%, transparent 15%),
+                radial-gradient(#B3E5FC 15%, transparent 15%);
+            background-size: 30px 30px;
+            background-position: 0 0, 15px 15px;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- 左側：寶可夢展示區 --- */
+        .left-panel {
+            width: 40%;
+            height: 100%;
+            background: linear-gradient(135deg, #4FC3F7 0%, #0288D1 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-right: 8px solid #FFF;
+            position: relative;
+            box-shadow: 5px 0 20px rgba(0,0,0,0.3);
+            z-index: 2;
+        }
+
+        .poke-img-container {
+            width: 80%;
+            height: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.8);
+            border: 6px solid #FFF;
+        }
+
+        .poke-img {
+            max-width: 100%;
+            max-height: 100%;
+            width: auto;
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2));
+            transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+
+        .poke-info {
+            text-align: center;
+            color: #01579B;
+            margin-top: 30px;
+        }
+
+        .poke-name {
+            font-size: 42px;
+            font-weight: 900;
+            color: #FFF;
+            text-shadow: 2px 2px 0 #0277BD;
+            margin: 0;
+        }
+
+        .level-indicator {
+            font-size: 20px;
+            color: #FFF;
+            margin-top: 15px;
+            background: #0288D1;
+            padding: 6px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 4px 0 #01579B;
+        }
+
+        /* --- 右側：遊戲區 --- */
+        .right-panel {
+            width: 60%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* 頂部標題列 */
+        .game-header {
+            padding: 20px 30px;
+            background: #29B6F6;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 4px solid #0277BD;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }
+
+        .progress-text {
+            font-size: 18px;
+            background: rgba(0,0,0,0.2);
+            padding: 5px 15px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        /* 遊戲主要內容區 */
+        .game-content {
+            flex: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        /* 題目框 */
+        .question-box {
+            background: #FFF;
+            width: 95%;
+            padding: 25px;
+            border-radius: 20px;
+            border: 4px solid #81D4FA;
+            box-shadow: 0 8px 0 #4FC3F7;
+            text-align: left;
+            font-size: 22px;
+            color: #0277BD;
+            font-weight: bold;
+            line-height: 1.8;
+            position: relative;
+            animation: fadeIn 0.5s;
+        }
+
+        /* --- 分數顯示樣式 (修復重點) --- */
+        .fraction {
+            display: inline-block;
+            vertical-align: middle;
+            text-align: center;
+            margin: 0 5px;
+            font-size: 0.9em;
+            line-height: 1;
+        }
+        .fraction .top {
+            display: block;
+            border-bottom: 2px solid currentColor;
+            padding: 2px;
+        }
+        .fraction .bottom {
+            display: block;
+            padding: 2px;
+        }
+
+        /* 選項按鈕區 */
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 95%;
+        }
+
+        .option-btn {
+            background: white;
+            border: 3px solid #4FC3F7;
+            color: #0277BD;
+            font-size: 20px;
+            padding: 15px 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.1s;
+            font-weight: bold;
+            box-shadow: 0 5px 0 #0288D1;
+            font-family: "Noto Sans TC", sans-serif;
+            text-align: left;
+            display: flex;
+            align-items: center;
+        }
+
+        .option-btn:hover {
+            background-color: #E1F5FE;
+            transform: translateY(-2px);
+        }
+
+        .option-btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
+
+        /* 錯誤提示 Modal */
+        .feedback-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .feedback-content {
+            background: white;
+            width: 85%;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 25px;
+            text-align: center;
+            border-top: 10px solid #D32F2F;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+        }
+        .feedback-title { color: #D32F2F; font-size: 32px; margin-bottom: 20px; font-weight: 900; }
+        .feedback-msg { 
+            font-size: 20px; 
+            color: #333; 
+            line-height: 1.6; 
+            margin-bottom: 30px; 
+            background: #FFEBEE; 
+            padding: 20px; 
+            border-radius: 15px; 
+            text-align: left;
+            border-left: 5px solid #D32F2F;
+        }
+        .feedback-btn {
+            background: #D32F2F; color: white; border: none; padding: 12px 40px;
+            font-size: 22px; border-radius: 50px; cursor: pointer; font-weight:bold;
+            box-shadow: 0 5px 0 #B71C1C;
+        }
+        .feedback-btn:active { transform: translateY(4px); box-shadow: none; }
+
+        /* 錯題回顧頁面 */
+        .review-screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .review-card {
+            background: white;
+            width: 90%;
+            max-width: 800px;
+            margin-bottom: 20px;
+            padding: 20px;
+            border-radius: 15px;
+            border-left: 8px solid #FF7043;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .review-q { font-weight: bold; font-size: 18px; color: #333; margin-bottom: 10px; }
+        .review-ans { color: #388E3C; font-weight: bold; margin-bottom: 5px; }
+        .review-exp { font-size: 16px; color: #555; background: #FFF3E0; padding: 10px; border-radius: 8px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; }
+            .left-panel { width: 100%; height: 35vh; border-right: none; border-bottom: 6px solid #FFF; }
+            .right-panel { width: 100%; height: 65vh; }
+            .poke-name { font-size: 32px; }
+            .game-content { padding: 15px; }
+            .question-box { font-size: 18px; padding: 15px; }
+            .options-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="left-panel" id="left-panel">
+        <div class="poke-img-container">
+            <img src="" id="poke-img" class="poke-img">
+        </div>
+        <div class="poke-info">
+            <h1 class="poke-name" id="poke-name">迷你冰</h1>
+            <div class="level-indicator" id="stage-indicator">階段一：冰晶生成</div>
+        </div>
+    </div>
+
+    <div class="right-panel">
+        <div class="game-header">
+            <div class="header-title">分數大挑戰</div>
+            <div class="progress-text" id="progress-text">第 1 / 15 題</div>
+        </div>
+
+        <div class="game-content" id="game-area">
+            <div class="question-box" id="question-text">
+                題目載入中...
+            </div>
+            <div class="options-grid" id="options-grid">
+                </div>
+        </div>
+
+        <div class="review-screen" id="review-area">
+            <h2 style="color: #0277BD; font-size: 30px;">❄️ 錯題回顧冰原 ❄️</h2>
+            <div id="review-list" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
+            <button class="feedback-btn" onclick="location.reload()" style="margin: 30px; background-color:#29B6F6; box-shadow:0 5px 0 #0277BD; border:none;">再挑戰一次</button>
+        </div>
+    </div>
+
+    <div class="feedback-modal" id="feedback-modal">
+        <div class="feedback-content">
+            <div class="feedback-title">❄️ 結冰了 (答錯囉)！</div>
+            <div class="feedback-msg" id="feedback-text"></div>
+            <button class="feedback-btn" onclick="closeModal()">再試一次</button>
+        </div>
+    </div>
+
+<script>
+    // --- 核心修復：分數格式轉換函式 ---
+    // 輸入格式: [分子/分母] 
+    // 例如: [3/4] 會轉成直式分數 HTML
+    function formatText(text) {
+        // 先將 \F(a,b) 替換成 [a/b] 以防萬一
+        text = text.replace(/\\F\((\d+|□|■|[\d\+\-\s]+),(\d+|□|■|[\d\+\-\s]+)\)/g, "[$1/$2]");
+        
+        // 正則表達式抓取 [a/b] 格式
+        return text.replace(/\[(.*?)\/(.*?)\]/g, function(match, n, d) {
+            return `<span class="fraction"><span class="top">${n}</span><span class="bottom">${d}</span></span>`;
+        });
+    }
+
+    // --- 題目資料庫 (使用 [a/b] 格式) ---
+    const rawQuestions = [
+        {
+            q: "一張海報紙平分成15份，美美用掉 [5/15] 張海報紙，小華比美美多用掉了 [2/15] 張，小華用掉了多少張海報紙？",
+            options: ["[2/15]張", "[2/15]張", "[5/15]張", "[7/15]張"],
+            ansIndex: 3,
+            exp: "小華比美美「多用掉」，所以要相加。<br>美美用掉的 ＋ 多的 ＝ 小華用掉的。<br>[5/15] ＋ [2/15] ＝ [7/15]。"
+        },
+        {
+            q: "將一塊蛋糕平分成10份，美美拿走其中3份，小寧拿走 [6/10] 塊蛋糕，他們共拿了多少塊蛋糕？",
+            options: ["[6/10]塊", "[3/10]塊", "[9/10]塊", "[2/10]塊"],
+            ansIndex: 2,
+            exp: "美美拿3份，就是 [3/10] 塊。<br>[3/10] ＋ [6/10] ＝ [9/10] 塊。"
+        },
+        {
+            q: "冰箱裡有一些麥茶，葳葳喝了 [3/9] 瓶麥茶，還剩下 [1/9] 瓶，冰箱裡原來有多少瓶麥茶？",
+            options: ["[4/9]瓶", "[3/9]瓶", "[2/9]瓶", "[1/9]瓶"],
+            ansIndex: 0,
+            exp: "喝掉的 ＋ 剩下的 ＝ 原來的。<br>[3/9] ＋ [1/9] ＝ [4/9]。"
+        },
+        {
+            q: "[2/8]＋[4/8] 的答案比下面哪一個圖形中塗色部分所表示的分數大？<br>(備註：①圖形表示 [4/8]，②圖形表示 [6/8]，③圖形表示 [7/8]，④圖形表示 [8/8])",
+            options: ["圖形① ([4/8])", "圖形② ([6/8])", "圖形③ ([7/8])", "圖形④ ([8/8])"],
+            ansIndex: 0,
+            exp: "[2/8] ＋ [4/8] ＝ [6/8]。<br>題目問比哪一個「大」？<br>[6/8] 比 [4/8] 大。<br>所以選①。"
+        },
+        {
+            q: "媽媽到超市買了一盒12顆的雞蛋，在回家途中不小心打破3顆，還剩下幾盒完好的雞蛋？",
+            options: ["[3/12]盒", "[5/12]盒", "[7/12]盒", "[9/12]盒"],
+            ansIndex: 3,
+            exp: "一盒12顆，1顆是 [1/12] 盒。<br>打破3顆，剩下 12 - 3 = 9 顆。<br>9顆就是 [9/12] 盒。"
+        },
+        {
+            q: "一包巧克力有11顆，小孟吃了3顆，剩餘的給陽陽吃，陽陽能吃到幾包的巧克力？",
+            options: ["8包", "3包", "[3/8]包", "[8/11]包"],
+            ansIndex: 3,
+            exp: "一包有11顆。<br>剩下 11 - 3 = 8 顆。<br>8顆巧克力是 [8/11] 包。"
+        },
+        {
+            q: "下面哪一個選項中的算式答案最大？",
+            options: ["[6/10]－[2/10]", "[5/10]－[3/10]", "[4/10]－[4/10]", "[6/10]－[3/10]"],
+            ansIndex: 0,
+            exp: "① [4/10] (最大)<br>② [2/10]<br>③ 0<br>④ [3/10]"
+        },
+        {
+            q: "下面哪一個選項中的算式答案最小？",
+            options: ["[5/9]－[2/9]", "[4/9]－[3/9]", "[6/9]－[2/9]", "[7/9]－[1/9]"],
+            ansIndex: 1,
+            exp: "① [3/9]<br>② [1/9] (最小)<br>③ [4/9]<br>④ [6/9]"
+        },
+        {
+            q: "下面哪一個選項中的算式答案最小？",
+            options: ["[5/8]－[3/8]", "[6/8]－[3/8]", "[7/8]－[6/8]", "1－[8/8]"],
+            ansIndex: 3,
+            exp: "① [2/8]<br>② [3/8]<br>③ [1/8]<br>④ 1 就是 [8/8]，相減等於 0 (最小)。"
+        },
+        {
+            q: "品芳寫考卷，不小心將題目的加數弄髒，考卷上被加數是 [3/7]，正確答案是1，原本題目的加數是多少？",
+            options: ["[2/7]", "[3/7]", "[4/7]", "[5/7]"],
+            ansIndex: 2,
+            exp: "被加數 ＋ 加數 ＝ 和。<br>加數 ＝ 和 － 被加數。<br>1 － [3/7] ＝ [7/7] － [3/7] ＝ [4/7]。"
+        },
+        {
+            q: "建豪寫考卷，不小心將題目的被加數弄髒，考卷上加數是 [6/12]，正確答案是 [7/12]，原本題目的被加數是多少？",
+            options: ["[12/5]", "[7/12]", "[6/12]", "[1/12]"],
+            ansIndex: 3,
+            exp: "被加數 ＋ 加數 ＝ 和。<br>被加數 ＝ 和 － 加數。<br>[7/12] － [6/12] ＝ [1/12]。"
+        },
+        {
+            q: "[□/9]－[2/9]＝[4/9]，□表示的數字是多少？",
+            options: ["9", "6", "4", "2"],
+            ansIndex: 1,
+            exp: "□ － 2 ＝ 4。<br>□ ＝ 4 ＋ 2 ＝ 6。"
+        },
+        {
+            q: "[7/□]－[2/□]＝[5/10]，□是一樣的數，□表示的數字是多少？",
+            options: ["9", "10", "12", "13"],
+            ansIndex: 1,
+            exp: "分數相減時，分母不變。<br>答案的分母是 10，所以 □ 就是 10。"
+        },
+        {
+            q: "1－[2/8]＝[■/8]，■表示的數字是多少？",
+            options: ["2", "3", "6", "8"],
+            ansIndex: 2,
+            exp: "1 可以換成 [8/8]。<br>[8/8] － [2/8] ＝ [6/8]。<br>所以 ■ 是 6。"
+        },
+        {
+            q: "下面哪一個選項計算後的答案是0？",
+            options: ["[7/8]－1個 [1/8]", "[3/6]－六分之三", "[5/7]－[3/7]", "[2/6]＋六分之二"],
+            ansIndex: 1,
+            exp: "① [6/8]<br>② 六分之三就是 [3/6]，相減等於 0 (正確)<br>③ [2/7]<br>④ [4/6]"
+        }
+    ];
+
+    // 遊戲狀態變數
+    let currentQuestions = [];
+    let currentIndex = 0;
+    let wrongQuestionsLog = []; 
+    let hasErrorInCurrentQuestion = false; 
+
+    // 進化設定
+    const stages = [
+        { name: "迷你冰", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/582.png", title: "階段一：冰晶生成" },
+        { name: "多多冰", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/583.png", title: "階段二：寒氣逼人" },
+        { name: "雙倍多多冰", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/584.png", title: "階段三：暴風雪" }
+    ];
+
+    window.onload = function() {
+        startGame();
+    };
+
+    function startGame() {
+        // 洗牌
+        currentQuestions = [...rawQuestions].sort(() => 0.5 - Math.random());
+        currentIndex = 0;
+        wrongQuestionsLog = [];
+        hasErrorInCurrentQuestion = false;
+        
+        document.getElementById('game-area').style.display = 'flex';
+        document.getElementById('review-area').style.display = 'none';
+        
+        updatePokemon(0);
+        loadQuestion();
+    }
+
+    function updatePokemon(stageIndex) {
+        const data = stages[stageIndex];
+        document.getElementById('poke-name').innerText = data.name;
+        document.getElementById('stage-indicator').innerText = data.title;
+        document.getElementById('poke-img').src = data.img;
+        
+        if (stageIndex > 0) {
+            const img = document.getElementById('poke-img');
+            img.style.filter = "brightness(100) drop-shadow(0 0 20px white)";
+            img.style.transform = "scale(1.2)";
+            setTimeout(() => {
+                img.style.filter = "drop-shadow(0 10px 15px rgba(0,0,0,0.2))";
+                img.style.transform = "scale(1)";
+                launchConfetti();
+            }, 600);
+        }
+    }
+
+    function loadQuestion() {
+        let stage = 0;
+        if (currentIndex >= 5) stage = 1;
+        if (currentIndex >= 10) stage = 2;
+        
+        if ((currentIndex === 5 || currentIndex === 10) && !hasErrorInCurrentQuestion) {
+            updatePokemon(stage);
+        } else if (currentIndex === 0) {
+            updatePokemon(0);
+        }
+
+        document.getElementById('progress-text').innerText = `第 ${currentIndex + 1} / 15 題`;
+
+        const qData = currentQuestions[currentIndex];
+        
+        document.getElementById('question-text').innerHTML = formatText(qData.q);
+        
+        const grid = document.getElementById('options-grid');
+        grid.innerHTML = "";
+        
+        qData.options.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = formatText(opt);
+            btn.onclick = () => checkAnswer(idx, btn);
+            grid.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedIndex, btn) {
+        const qData = currentQuestions[currentIndex];
+        
+        if (selectedIndex === qData.ansIndex) {
+            btn.style.backgroundColor = "#B9F6CA";
+            btn.style.borderColor = "#00C853";
+            
+            setTimeout(() => {
+                hasErrorInCurrentQuestion = false;
+                currentIndex++;
+                
+                if (currentIndex >= currentQuestions.length) {
+                    showReviewScreen();
+                } else {
+                    loadQuestion();
+                }
+            }, 600);
+        } else {
+            if (!hasErrorInCurrentQuestion) {
+                wrongQuestionsLog.push(qData);
+                hasErrorInCurrentQuestion = true;
+            }
+            
+            showErrorModal(qData.exp);
+        }
+    }
+
+    function showErrorModal(expText) {
+        const modal = document.getElementById('feedback-modal');
+        const text = document.getElementById('feedback-text');
+        
+        text.innerHTML = `
+            <strong>解析提示：</strong><br>
+            ${formatText(expText)}
+        `;
+        modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('feedback-modal').style.display = 'none';
+    }
+
+    function showReviewScreen() {
+        document.getElementById('left-panel').style.display = 'none';
+        document.getElementById('game-area').style.display = 'none';
+        document.getElementById('progress-text').innerText = "特訓完成";
+        
+        const reviewArea = document.getElementById('review-area');
+        const reviewList = document.getElementById('review-list');
+        reviewArea.style.display = 'flex';
+        reviewList.innerHTML = "";
+
+        if (wrongQuestionsLog.length === 0) {
+            reviewList.innerHTML = "<h3 style='color:#0277BD;'>太棒了！全對！沒有錯題需要複習。</h3>";
+            launchConfetti();
+        } else {
+            reviewList.innerHTML = `<p>你在這次特訓中，共有 ${wrongQuestionsLog.length} 題需要加強：</p>`;
+            
+            wrongQuestionsLog.forEach((qData, index) => {
+                const card = document.createElement('div');
+                card.className = 'review-card';
+                card.innerHTML = `
+                    <div class="review-q">題目 ${index + 1}：${formatText(qData.q)}</div>
+                    <div class="review-ans">正確答案：${formatText(qData.options[qData.ansIndex])}</div>
+                    <div class="review-exp"><strong>解析：</strong><br>${formatText(qData.exp)}</div>
+                `;
+                reviewList.appendChild(card);
+            });
+        }
+        
+        launchConfetti();
+    }
+
+    function launchConfetti() {
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#29B6F6', '#81D4FA', '#E1F5FE']
+        });
+    }
+</script>
+
+</body>
+</html>
