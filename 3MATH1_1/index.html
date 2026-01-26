@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>花蓓蓓進化：分數大挑戰 (修復版)</title>
+    <title>花蓓蓓進化：分數大挑戰 (無框修復版)</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap');
@@ -39,25 +39,24 @@
             z-index: 2;
         }
 
+        /* --- 修改處：移除圓形外框樣式 --- */
         .poke-img-container {
-            width: 80%;
-            height: 50%;
+            width: 100%; /* 寬度放寬 */
+            height: 60%; /* 高度拉高 */
             display: flex;
             justify-content: center;
             align-items: center;
             position: relative;
-            background: rgba(255, 255, 255, 0.6);
-            border-radius: 50%;
-            box-shadow: 0 0 40px rgba(255, 255, 255, 0.8);
-            border: 6px solid #FFF;
+            /* 已移除 background, border-radius, box-shadow, border */
         }
 
         .poke-img {
-            max-width: 100%;
-            max-height: 100%;
+            max-width: 90%; 
+            max-height: 90%;
             width: auto;
             height: auto;
             object-fit: contain;
+            /* 保留圖片本身的陰影，增加立體感 */
             filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2));
             transition: transform 0.6s cubic-bezier(0.68, -0.55, 0.27, 1.55);
         }
@@ -65,7 +64,7 @@
         .poke-info {
             text-align: center;
             color: #33691E;
-            margin-top: 30px;
+            margin-top: 20px;
         }
 
         .poke-name {
@@ -156,7 +155,7 @@
             animation: fadeIn 0.5s;
         }
 
-        /* --- 分數顯示樣式 (修復重點) --- */
+        /* --- 分數顯示樣式 (關鍵 CSS) --- */
         .fraction {
             display: inline-block;
             vertical-align: middle;
@@ -247,6 +246,7 @@
             font-size: 22px; border-radius: 50px; cursor: pointer; font-weight:bold;
             box-shadow: 0 5px 0 #C2185B;
         }
+        .feedback-btn:active { transform: translateY(4px); box-shadow: none; }
 
         /* 錯題回顧頁面 */
         .review-screen {
