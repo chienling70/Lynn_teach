@@ -315,4 +315,300 @@
         </div>
 
         <div class="review-screen" id="review-area">
-            <h2 style="color: #E
+            <h2 style="color: #E91E63; font-size: 30px;">🌸 錯題回顧花園 🌸</h2>
+            <div id="review-list" style="width: 100%; display: flex; flex-direction: column; align-items: center;"></div>
+            <button class="feedback-btn" onclick="location.reload()" style="margin: 30px;">再挑戰一次</button>
+        </div>
+    </div>
+
+    <div class="feedback-modal" id="feedback-modal">
+        <div class="feedback-content">
+            <div class="feedback-title">🥀 哎呀，答錯了！</div>
+            <div class="feedback-msg" id="feedback-text"></div>
+            <button class="feedback-btn" onclick="closeModal()">再試一次</button>
+        </div>
+    </div>
+
+<script>
+    // --- 資料處理與輔助函式 ---
+    
+    // 將 \F(a,b) 轉換為 HTML 分數格式
+    function formatText(text) {
+        return text.replace(/\\F\((\d+|□|[\d\+\-\s]+),(\d+|■|[\d\+\-\s]+)\)/g, function(match, n, d) {
+            return `<span class="fraction"><sup>${n}</sup><sub>${d}</sub></span>`;
+        });
+    }
+
+    // --- 題目資料庫 (已補上解析) ---
+    const rawQuestions = [
+        {
+            q: "一個蛋糕平分成8塊，小偉和6個同學一個人吃1塊，一共吃了多少個蛋糕？",
+            options: ["\\F(6,8個", "\\F(8,6個", "\\F(7,8個", "\\F(8,7個"],
+            ansIndex: 2, // 3 -> index 2
+            exp: "小偉 + 6個同學 = 7個人。<br>每人吃1塊，共吃了7塊。<br>每個蛋糕切成8塊，所以吃了 \\F(7,8 個蛋糕。"
+        },
+        {
+            q: "下面哪一個選項中的算式答案最大？",
+            options: ["\\F(3,10＋\\F(6,10", "\\F(5,10＋\\F(2,10", "\\F(4,10＋\\F(4,10", "\\F(6,10＋\\F(4,10"],
+            ansIndex: 3, // 4 -> index 3
+            exp: "① \\F(9,10<br>② \\F(7,10<br>③ \\F(8,10<br>④ \\F(10,10 = 1 (最大)"
+        },
+        {
+            q: "下面哪一個選項中的算式答案最小？",
+            options: ["\\F(5,9＋\\F(4,9", "\\F(4,9＋\\F(3,9", "\\F(6,9＋\\F(2,9", "\\F(7,9＋\\F(1,9"],
+            ansIndex: 1, // 2 -> index 1
+            exp: "① \\F(9,9<br>② \\F(7,9 (最小)<br>③ \\F(8,9<br>④ \\F(8,9"
+        },
+        {
+            q: "下面哪一個選項中的算式答案最小？",
+            options: ["\\F(5,8＋\\F(3,8", "\\F(4,7＋\\F(3,7", "\\F(4,9＋\\F(3,9", "\\F(7,9＋\\F(2,9"],
+            ansIndex: 2, // 3 -> index 2
+            exp: "① \\F(8,8=1<br>② \\F(7,7=1<br>③ \\F(7,9 (小於1，最小)<br>④ \\F(9,9=1"
+        },
+        {
+            q: "下面哪一個選項中的算式答案和2個\\F(1,2一樣大？",
+            options: ["\\F(5,7＋\\F(2,7", "\\F(2,5＋\\F(1,5", "\\F(1,3＋\\F(1,3", "\\F(2,6＋\\F(3,6"],
+            ansIndex: 0, // 1 -> index 0
+            exp: "2個 \\F(1,2 是 \\F(2,2 = 1。<br>① \\F(7,7 = 1 (一樣大)<br>② \\F(3,5<br>③ \\F(2,3<br>④ \\F(5,6"
+        },
+        {
+            q: "有一條長\\F(7,7公尺的繩子，和一條長\\F(5,5公尺的繩子，兩條繩子合起來共長多少公尺？",
+            options: ["1公尺", "2公尺", "\\F(2,7公尺", "無法計算"],
+            ansIndex: 1, // 2 -> index 1
+            exp: "\\F(7,7公尺 = 1公尺。<br>\\F(5,5公尺 = 1公尺。<br>1 + 1 = 2公尺。"
+        },
+        {
+            q: "美美寫數學考卷，不小心將題目的被減數弄髒，考卷上減數是\\F(1,4，正確答案是\\F(3,4，原本題目的被減數是多少？",
+            options: ["1", "\\F(1,4", "\\F(2,4", "\\F(3,4"],
+            ansIndex: 0, // 1 -> index 0
+            exp: "被減數 － 減數 ＝ 差。<br>所以，被減數 ＝ 差 ＋ 減數。<br>\\F(3,4 ＋ \\F(1,4 ＝ \\F(4,4 ＝ 1。"
+        },
+        {
+            q: "題目：\\F(2,6＋\\F(1,6＝(　　)<br>計算過程：\\F(2,6＋\\F(1,6＝\\F(2＋1,6＋6＝\\F(3,12<br>上面是美美寫數學題目的計算過程，她的計算過程正確嗎？",
+            options: ["正確", "錯誤，計算過程是\\F(2,6＋\\F(1,6＝\\F(2,6＋6＝\\F(2,12", "錯誤，計算過程是\\F(2,6＋\\F(1,6＝\\F(2＋1,6＝\\F(3,6", "錯誤，計算過程是\\F(2,6＋\\F(1,6＝\\F(1,6＋6＝\\F(1,12"],
+            ansIndex: 2, // 3 -> index 2
+            exp: "分數相加時，分母不變，分子相加。<br>正確應為：\\F(2＋1,6 ＝ \\F(3,6。"
+        },
+        {
+            q: "美美將竹竿直立的插到水底，有\\F(3,15的竹竿在水中，再將竹竿反過來直立的插到水底後，竹竿現在共有多少部分是濕的？",
+            options: ["\\F(6,15", "\\F(3,15", "\\F(9,15", "\\F(6,30"],
+            ansIndex: 0, // 1 -> index 0
+            exp: "第一次濕了 \\F(3,15。<br>反過來插，另一頭也濕了 \\F(3,15。<br>共濕了：\\F(3,15 ＋ \\F(3,15 ＝ \\F(6,15。"
+        },
+        {
+            q: "\\F(2,9＋\\F(□,9＝\\F(3,9，□表示的數字是多少？",
+            options: ["1", "2", "3", "9"],
+            ansIndex: 0, // 1 -> index 0
+            exp: "分子相加：2 ＋ □ ＝ 3。<br>所以 □ ＝ 1。"
+        },
+        {
+            q: "\\F(□,5＋\\F(□,5＝\\F(4,5，□是一樣的數，□是多少？",
+            options: ["1", "2", "3", "4"],
+            ansIndex: 1, // 2 -> index 1
+            exp: "分子相加：□ ＋ □ ＝ 4。<br>2 ＋ 2 ＝ 4，所以 □ 是 2。"
+        },
+        {
+            q: "\\F(□,6＋\\F(□,6＝1，□是一樣的數，□是多少？",
+            options: ["6", "3", "2", "1"],
+            ansIndex: 1, // 2 -> index 1
+            exp: "1 等於 \\F(6,6。<br>分子相加：□ ＋ □ ＝ 6。<br>3 ＋ 3 ＝ 6，所以 □ 是 3。"
+        },
+        {
+            q: "\\F(□,7＋\\F(4,7＝1，□表示的數字是多少？",
+            options: ["1", "3", "4", "7"],
+            ansIndex: 1, // 2 -> index 1
+            exp: "1 等於 \\F(7,7。<br>分子相加：□ ＋ 4 ＝ 7。<br>所以 □ ＝ 3。"
+        },
+        {
+            q: "下面哪一個選項的答案是1？",
+            options: ["\\F(1,5＋3個\\F(1,5", "9個九分之一", "\\F(2,7＋\\F(4,7", "\\F(3,6＋六分之二"],
+            ansIndex: 1, // 2 -> index 1
+            exp: "① \\F(1,5 + \\F(3,5 = \\F(4,5<br>② 9個 \\F(1,9 = \\F(9,9 = 1 (正確)<br>③ \\F(6,7<br>④ \\F(3,6 + \\F(2,6 = \\F(5,6"
+        },
+        {
+            q: "哥哥吃了\\F(2,6包蛋卷，蛋卷還剩下\\F(4,6包，原本有多少包蛋卷？",
+            options: ["1包", "\\F(2,6包", "\\F(3,6包", "\\F(4,6包"],
+            ansIndex: 0, // 1 -> index 0
+            exp: "吃掉的 ＋ 剩下的 ＝ 原本的。<br>\\F(2,6 ＋ \\F(4,6 ＝ \\F(6,6 ＝ 1 (包)。"
+        }
+    ];
+
+    // 遊戲狀態變數
+    let currentQuestions = [];
+    let currentIndex = 0;
+    let wrongQuestionsLog = []; // 記錄第一次答錯的題目 {q, options, ansIndex, exp}
+    let hasErrorInCurrentQuestion = false; // 標記當前題目是否答錯過
+
+    // 進化設定
+    const stages = [
+        { name: "花蓓蓓", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/669.png", title: "階段一：種子萌芽" },
+        { name: "花葉蒂", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/670.png", title: "階段二：花朵盛開" },
+        { name: "花潔夫人", img: "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/671.png", title: "階段三：花園守護者" }
+    ];
+
+    window.onload = function() {
+        startGame();
+    };
+
+    function startGame() {
+        // 洗牌
+        currentQuestions = [...rawQuestions].sort(() => 0.5 - Math.random());
+        currentIndex = 0;
+        wrongQuestionsLog = [];
+        hasErrorInCurrentQuestion = false;
+        
+        document.getElementById('game-area').style.display = 'flex';
+        document.getElementById('review-area').style.display = 'none';
+        
+        updatePokemon(0);
+        loadQuestion();
+    }
+
+    function updatePokemon(stageIndex) {
+        const data = stages[stageIndex];
+        document.getElementById('poke-name').innerText = data.name;
+        document.getElementById('stage-indicator').innerText = data.title;
+        document.getElementById('poke-img').src = data.img;
+        
+        // 進化動畫
+        if (stageIndex > 0) {
+            const img = document.getElementById('poke-img');
+            img.style.filter = "brightness(100) drop-shadow(0 0 20px white)";
+            img.style.transform = "scale(1.2)";
+            setTimeout(() => {
+                img.style.filter = "drop-shadow(0 10px 15px rgba(0,0,0,0.2))";
+                img.style.transform = "scale(1)";
+                launchConfetti();
+            }, 600);
+        }
+    }
+
+    function loadQuestion() {
+        // 更新進度與進化狀態
+        // 0-4題: 花蓓蓓, 5-9題: 花葉蒂, 10-14題: 花潔夫人
+        let stage = 0;
+        if (currentIndex >= 5) stage = 1;
+        if (currentIndex >= 10) stage = 2;
+        
+        // 如果剛跨入新階段，更新寶可夢
+        const prevStage = currentIndex > 0 ? (currentIndex === 5 ? 0 : (currentIndex === 10 ? 1 : -1)) : -1;
+        if ((currentIndex === 5 || currentIndex === 10) && !hasErrorInCurrentQuestion) {
+            updatePokemon(stage);
+        } else if (currentIndex === 0) {
+            updatePokemon(0);
+        }
+
+        document.getElementById('progress-text').innerText = `第 ${currentIndex + 1} / 15 題`;
+
+        const qData = currentQuestions[currentIndex];
+        
+        // 渲染題目
+        document.getElementById('question-text').innerHTML = formatText(qData.q);
+        
+        // 渲染選項
+        const grid = document.getElementById('options-grid');
+        grid.innerHTML = "";
+        
+        qData.options.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerHTML = formatText(opt);
+            btn.onclick = () => checkAnswer(idx, btn);
+            grid.appendChild(btn);
+        });
+
+        // 重置當前題目的錯誤狀態標記 (如果是新的一題)
+        // 注意：這裡邏輯是「只要這題沒答對前都算同一題」
+    }
+
+    function checkAnswer(selectedIndex, btn) {
+        const qData = currentQuestions[currentIndex];
+        
+        if (selectedIndex === qData.ansIndex) {
+            // 答對了
+            // 視覺回饋
+            btn.style.backgroundColor = "#A5D6A7";
+            btn.style.border = "3px solid #388E3C";
+            
+            setTimeout(() => {
+                // 重置標記，準備下一題
+                hasErrorInCurrentQuestion = false;
+                currentIndex++;
+                
+                if (currentIndex >= currentQuestions.length) {
+                    showReviewScreen();
+                } else {
+                    loadQuestion();
+                }
+            }, 600);
+        } else {
+            // 答錯了
+            // 1. 如果是第一次錯，加入錯題本
+            if (!hasErrorInCurrentQuestion) {
+                wrongQuestionsLog.push(qData);
+                hasErrorInCurrentQuestion = true;
+            }
+            
+            // 2. 顯示解析視窗 (不顯示正確答案，只給提示)
+            showErrorModal(qData.exp);
+        }
+    }
+
+    function showErrorModal(expText) {
+        const modal = document.getElementById('feedback-modal');
+        const text = document.getElementById('feedback-text');
+        
+        text.innerHTML = `
+            <strong>解析提示：</strong><br>
+            ${formatText(expText)}
+        `;
+        modal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('feedback-modal').style.display = 'none';
+    }
+
+    function showReviewScreen() {
+        document.getElementById('left-panel').style.display = 'none';
+        document.getElementById('game-area').style.display = 'none';
+        document.getElementById('progress-text').innerText = "特訓完成";
+        
+        const reviewArea = document.getElementById('review-area');
+        const reviewList = document.getElementById('review-list');
+        reviewArea.style.display = 'flex';
+        reviewList.innerHTML = "";
+
+        if (wrongQuestionsLog.length === 0) {
+            reviewList.innerHTML = "<h3 style='color:#388E3C;'>太棒了！全對！沒有錯題需要複習。</h3>";
+            launchConfetti();
+        } else {
+            reviewList.innerHTML = `<p>你在這次特訓中，共有 ${wrongQuestionsLog.length} 題需要加強：</p>`;
+            
+            wrongQuestionsLog.forEach((qData, index) => {
+                const card = document.createElement('div');
+                card.className = 'review-card';
+                card.innerHTML = `
+                    <div class="review-q">題目 ${index + 1}：${formatText(qData.q)}</div>
+                    <div class="review-ans">正確答案：${formatText(qData.options[qData.ansIndex])}</div>
+                    <div class="review-exp"><strong>解析：</strong><br>${formatText(qData.exp)}</div>
+                `;
+                reviewList.appendChild(card);
+            });
+        }
+        
+        launchConfetti();
+    }
+
+    function launchConfetti() {
+        confetti({
+            particleCount: 150,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#F06292', '#81C784', '#FFF176']
+        });
+    }
+</script>
+
+</body>
+</html>
